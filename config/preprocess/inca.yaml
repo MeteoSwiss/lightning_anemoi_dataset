@@ -1,0 +1,27 @@
+# lightningpre_anemoi_dataset configuration — INCA / Swiss Grid LV95
+#
+# Usage:
+#   lightning-grid --config config/preprocess/inca.yaml
+#
+# Produces: /store_new/mch/msclim/lightning_on_inca/lightning_YYYYMMDD.nc
+# Grid    : INCA regular grid, 710 × 640 cells, ~1 km, CH1903+/LV95 (EPSG:2056)
+# Time    : 144 × 10-minute end-of-interval steps per day
+#
+# The output NetCDF must include 2-D WGS84 coordinate arrays:
+#   lat(p_i, p_j)  standard_name=latitude   units=degrees_north
+#   lon(p_i, p_j)  standard_name=longitude  units=degrees_east
+# so that the thx-lightning anemoi source can ingest them without an external
+# grid registry file.
+
+start: "20050101"
+stop:  "20251231"
+
+granularity:    10min
+discharge_type: [CG, IC]
+radius_km:      1
+
+network_bbox: [42.5, 50.2, 0.0, 17.0]   # [lat_min, lat_max, lon_min, lon_max]
+
+archive_path: /store_new/mch/msclim/hamann/database/lightning/THX
+inca_grid_file: /store_new/mch/msclim/INCA/INCA1km_topography_parameters.nc
+output_dir:   /store_new/mch/msclim/lightning_on_inca

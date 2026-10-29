@@ -1,120 +1,196 @@
-# template-anemoi-dataset
+# lightning-anemoi-dataset
 
-This repository serves as a template for creating Anemoi datasets. The motivation for creating separate repositories for different datasets, as opposed to a single repository containing all dataset recipes, is to maintain clear boundaries between different data sources and their respective processing logic, and to facilitate independent versioning and reproducibility.
+Anemoi dataset recipes and preprocessing code for MeteoSwiss THX lightning data on the ICON-CH1 native grid and the INCA 710×640 domain.
 
-# Table of contents
-1. [Using this template](#using-this-template)
-2. [Development guidelines](#development-guidelines)
-3. [Versioning guidelines](#versioning-guidelines)
+## Getting started
 
+Requires Python 3.12+. Install everything with [uv](https://docs.astral.sh/uv/):
 
-# Using this template
-
-Each instantiation of this template targets a **single data source**. The repo is named:
-
-```
-<source>-anemoi-dataset
+```bash
+git clone --recurse-submodules https://github.com/MeteoSwiss/lightning-anemoi-dataset
+cd lightning-anemoi-dataset
+uv sync
+source .venv/bin/activate
 ```
 
-For example: `ich1-analysis-anemoi-dataset`, `synop-anemoi-dataset`, `mtg-anemoi-dataset`.
+The workspace installs three packages into `.venv`:
 
-Within one repo, **variants** represent different configurations of the same source: different sets of variables, vertical coordinates, resolutions, time granularity, etc. 
+| Package | Source |
+|---|---|
+| `lightning-anemoi-dataset` | `src/lightning_anemoi_dataset/` (this repo) |
+| `anemoi-plugins-meteoswiss` | `packages/anemoi-plugins-meteoswiss/` (submodule) |
+| `anemoi-datasets` | `packages/anemoi-datasets/` (submodule) |
 
-## Granularity boundary: repo vs variant
+## Overview
 
-The boundary rule is:
+### Data source
 
-> **New repo** when the data comes from a different source system.
-> **New variant** when the difference is a configuration choice within the same source system.
-
-Use a new repo if *any* of these are true:
-
-- Different data source
-- Different data access system
-- Different domain knowledge required to process the data
-
-Use a new variant if *all* of these are true:
-
-- Same data source
-- Same data access system
-- Same domain knowledge required to process the data
-- Configs differ mainly in data queries (e.g. which variables, levels, or time ranges are selected) and processing
-
-## Quickstart
-
-* Instantiate this template directly from GitHub (button on the top right).
-* Clone your repository, install the python environment with `uv sync`.
-* Move this README somewhere else and rename `README.template.md` to `README.md`. 
-* Get started developing and follow the instructions below.
-
-# Development guidelines
-
-## Writing dataset recipes
-
-Dataset names follow the [anemoi-datasets naming conventions](https://anemoi.readthedocs.io/projects/datasets/en/latest/building/naming-conventions.html).
+Raw lightning data comes from the [Vaisala THX](https://www.vaisala.com/en/products/systems/lightning-detection) network, archived at MeteoSwiss as pipe-separated `.prd` / `.prd.zip` files under:
 
 ```
-purpose-content-source-resolution-start-year-end-year-frequency-version[-extra-str]
+/store_new/mch/msclim/hamann/database/lightning/THX/YYYY/MM/YYYYMMDD.prd[.zip]
 ```
 
-- All lowercase
-- Only letters, numbers, and dashes `-` are allowed
-- No underscores `_`, no dots `.`, no uppercase, no special characters (`@`, `#`, `*`, etc.)
-- Parts are separated by dashes `-`
+Each line contains: date/time (UTC), lon, lat, peak current, and discharge type (`intra` field: 0=CG, 1=IC).
 
-| Component | Description | Examples |
-|-----------|-------------|---------| 
-| **purpose** | Intended use of the dataset | `varda`, `aifs`, `bris` |
-| **content** | Data content, optionally `class-type-stream-expver` | `od-an-oper-0001` |
-| **source** | Origin of the data | `mars`, `fdb`, `dwh` |
-| **resolution** | Spatial resolution | `n320`, `1km`, `100m`, `NA` |
-| **start-year** | Year of the first validity time | `1979` |
-| **end-year** | Year of the last validity time | `2022` |
-| **frequency** | Temporal resolution | `1h`, `6h`, `10m` |
-| **version** | Version of the dataset content (which variables, levels, etc.) — must be prefixed with `v`. Bumped only when the dataset content changes in a breaking way. | `v1`, `v5` |
-| **extra-str** *(optional)* | Additional information for experimental datasets | `recentered-on-oper` |
+### Grid variants
 
+| Variant | Grid | Cells | CRS | Extra-str |
+|---|---|---|---|---|
+| **ICON** | ICON-CH1 R19B08 native unstructured | 1,147,980 | WGS84 | *(none)* |
+| **INCA** | INCA 710×640 regular | 454,400 | CH1903+/LV95 (EPSG:2056) | `-inca` |
 
-## Writing plugins or new anemoi features
+### Preprocessing
 
-When the functionality needed to generate a dataset is missing from anemoi, there are two options.
+Preprocessing converts raw `.prd` strike files into daily NetCDF files (`lightning_YYYYMMDD.nc`) that are then consumed by `anemoi-datasets`.
 
-* Implement this functionality as a _plugin_
-* Implement this functionality in anemoi itself (usually in anemoi-datasets) 
+```
+lightning-grid --config config/preprocess/icon.yaml   # ICON native grid
+lightning-grid --config config/preprocess/inca.yaml   # INCA domain
+```
 
-To facilitate working on new functionality for a new dataset, both `anemoi-plugins-meteoswiss` and `anemoi-datasets` have been in included here as git submodules under `packages/`. If you are not familiar with git submodules, ask your favourite LLM. In short, your master repository tracks _pointers_ to the specific commits of the submodules, allowing you to control which version of the submodule is used. If you are developing a new dataset and need to implement a feature in a submodule, do this:
+Or submit to SLURM:
 
-* create a new branch in the master repository 
-* create a new branch in the submodule, make your changes and commit them
-* update the pointer in the master repository to point to the new commit in the submodule (`git add <submodule>` and `git commit -m "Update submodule pointer"`)
-* (optional) update `branch` in the `.gitmodules` file to track a remote branch for the submodule
+```bash
+sbatch scripts/preprocess.sh icon   # or inca
+```
 
+Output directories are set in the YAML configs under `config/preprocess/`.
 
-# Versioning guidelines
+#### Configuration keys
+
+| Key | Default | Description |
+|---|---|---|
+| `start` / `stop` | — | Date range (UTC, inclusive). Format: `YYYYMMDD` or `YYYY-MM-DD`. |
+| `grid_type` | `icon` | Target grid: `icon` (ICON-CH1 native) or `inca` (710×640 LV95 regular). |
+| `granularity` | `10min` | Accumulation window and timestep per output file. Options: `10min`, `60min`, `24h`. |
+| `discharge_type` | `[CG, IC]` | Lightning types to include. `CG` = cloud-to-ground (`intra=0`), `IC` = intra-cloud (`intra=1`). |
+| `radius_km` | `8.0` | Each strike is counted in every cell within this radius. `0` = nearest-neighbour only. 8 km is used in Coalition4; INCA typically uses 1 km; ICAO/WMO thunderstorm proximity threshold is 16 km. |
+| `network_bbox` | `[42.5, 50.2, 0.0, 17.0]` | THX network extent as `[lat_min, lat_max, lon_min, lon_max]`. Cells outside this box are masked. |
+| `archive_path` | `/store_new/mch/msclim/hamann/database/lightning/THX` | Root of the THX archive tree. Both `.prd` and `.prd.zip` files are supported. |
+| `icon_grid_file` | `/store_new/mch/msclim/pronos/icon_grid_0001_R19B08_mch.nc` | ICON-CH1 R19B08 native grid file (1,147,980 cells, ~0.7 km mean spacing). Only used when `grid_type: icon`. |
+| `inca_grid_file` | `/store_new/mch/msclim/INCA/INCA1km_topography_parameters.nc` | INCA topography NetCDF for optional coordinate verification. Only used when `grid_type: inca`. |
+| `output_dir` | `.` | Directory where daily `lightning_YYYYMMDD.nc` files are written. Created if absent. |
+
+#### Output format
+
+**ICON** (`grid_type: icon`):
+```
+lightning_YYYYMMDD.nc
+  dims:   time=144, ncells=1_147_980
+  vars:   lightning_count(time, ncells)  [int16, fill=-1]
+  coords: clat(ncells), clon(ncells), time(UTC)
+```
+
+**INCA** (`grid_type: inca`):
+```
+lightning_YYYYMMDD.nc
+  dims:   time=144, p_i=640, p_j=710
+  vars:   lightning_count(time, p_i, p_j)  [int16]
+  coords: lat(p_i, p_j), lon(p_i, p_j), time(UTC)
+```
+
+#### Typical wall-time estimates (10-min granularity, `radius_km: 8`)
+
+| Period | Approx. wall time |
+|---|---|
+| 1 day | ~75 s |
+| 1 month | ~40 min |
+| 1 year | ~8 h |
+
+The `lightning-grid` CLI is implemented in `src/lightning_anemoi_dataset/`:
+
+```
+src/lightning_anemoi_dataset/
+  config.py       Config dataclass and YAML loader
+  extract.py      Raw .prd / .prd.zip reader
+  grids/
+    icon.py       ICON-CH1 KD-tree spatial binning
+    inca.py       INCA LV95 KD-tree spatial binning
+  accumulate.py   Time-bin strikes into count arrays
+  output.py       Write CF-1.8 compliant NetCDF
+  cli.py          lightning-grid entry point
+```
+
+### Anemoi plugin
+
+The `thx-lightning` anemoi source plugin lives in `packages/anemoi-plugins-meteoswiss/`:
+
+```
+src/anemoi_plugins_meteoswiss/transform/sources/thx_lightning.py
+```
+
+It reads the preprocessed daily NetCDF files and exposes them as earthkit `FieldList` objects for `anemoi-datasets`.
+
+### Creating a dataset
+
+1. Run preprocessing (once per grid type, idempotent — skips existing files):
+
+```bash
+sbatch scripts/preprocess.sh icon
+```
+
+2. Build the anemoi dataset:
+
+```bash
+sbatch scripts/build.sh icon
+# or
+sbatch scripts/build.sh inca
+```
+
+Dataset configs are under `config/`:
+
+| Config | Grid | Period | Frequency |
+|---|---|---|---|
+| `varda-lightning-thx-1km-2005-2025-10min-v1.yaml` | ICON | 2005–2025 | 10 min |
+| `varda-lightning-thx-1km-2005-2025-10min-v1-inca.yaml` | INCA | 2005–2025 | 10 min |
+
+Debug configs for quick smoke tests (6 timesteps, 2020-01-01):
+
+```bash
+anemoi-datasets create config/debug/lightning.yaml /tmp/test-icon.zarr
+anemoi-datasets create config/debug/lightning-inca.yaml /tmp/test-inca.zarr
+```
+
+## Pre-generation checklist
+
+Before generating a production dataset, verify:
+
+- [ ] All changes are committed and pushed (ideally merged to `main`)
+- [ ] Config filename follows the anemoi naming convention
+- [ ] Submodules point to the right commits (ideally merged to `main`)
+- [ ] An annotated Git tag has been pushed (e.g. `v1` or `v1-inca`)
+- [ ] A GitHub release has been created from the tag with a dataset description
+
+## Versioning
 
 A dataset is a reproducible build artifact. Its exact content is determined by:
 
-1. **The recipe** – the YAML configuration file under `config/` passed to `anemoi-datasets`.
-2. **The code** – the pinned commits of the `anemoi-datasets` and `anemoi-plugins-meteoswiss`
-   submodules, plus any project-level source code.
+1. **The recipe** — the YAML config under `config/` passed to `anemoi-datasets`
+2. **The code** — the pinned commits of the `anemoi-datasets` and `anemoi-plugins-meteoswiss` submodules, plus `src/lightning_anemoi_dataset/`
 
-Both must be versioned together. A Git tag on this repository captures all of this in a single,
-immutable reference. **The tag must be created before running a production dataset generation.**
-
-A git tag will have the same version as the version part in the dataset name. For instance
+Both must be versioned together via a Git tag **before** running a production build.
 
 ```
-purpose-content-source-resolution-start-year-end-year-frequency-v1
+varda-lightning-thx-1km-2005-2025-10min-v1        →  tag: v1
+varda-lightning-thx-1km-2005-2025-10min-v1-inca   →  tag: v1-inca
 ```
 
-will get a tag `v1`. 
+## Dataset naming
 
-Optionally, multiple variants of a dataset can be generated. A variant of a dataset will typically be identified by the **extra-str** part of the dataset name. Information about the variant must then be included in the git tag. For instance
+Follows the [anemoi naming convention](https://anemoi.readthedocs.io/projects/datasets/en/latest/building/naming-conventions.html):
 
 ```
-purpose-content-source-resolution-start-year-end-year-frequency-v1-pl13
+purpose-content-source-resolution-start-end-frequency-version[-extra-str]
 ```
 
-will get a tag `v1-pl13`. If the variant information is encoded in something else (e.g. a different resolution), you may also use that instead.
-
-After you have generated a new dataset and pushed a corresponding tag, you can create a GitHub release, with a description. If the data is publicly available, include a link.
+| Component | Value |
+|---|---|
+| purpose | `varda` |
+| content | `lightning` |
+| source | `thx` |
+| resolution | `1km` |
+| start / end | `2005` / `2025` |
+| frequency | `10min` |
+| version | `v1` |
+| extra-str | *(none)* for ICON; `-inca` for INCA variant |

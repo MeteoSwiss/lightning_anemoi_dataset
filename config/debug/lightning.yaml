@@ -1,0 +1,20 @@
+name: debug-lightning
+
+description: Debug recipe — small date range to test the thx-lightning source.
+
+resolution: 1km
+
+dates:
+  start: 2020-01-01T00:10
+  end: 2020-01-01T01:00
+  frequency: 10min
+
+build:
+  group_by: daily
+
+input:
+  join:
+
+    - thx-lightning:
+        data_dir: /store_new/mch/msclim/lightning_on_icon
+        icon_grid_path: /store_new/mch/msclim/pronos/icon_grid_0001_R19B08_mch.nc

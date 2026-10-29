@@ -1,0 +1,21 @@
+# lightningpre_anemoi_dataset configuration — ICON-CH1 native grid
+#
+# Usage:
+#   lightning-grid --config config/preprocess/icon.yaml
+#
+# Produces: /store_new/mch/msclim/lightning_on_icon/lightning_YYYYMMDD.nc
+# Grid    : ICON-CH1 native unstructured (R19B08, ~1 km, 1 147 980 cells)
+# Time    : 144 × 10-minute end-of-interval steps per day
+
+start: "20050101"
+stop:  "20251231"
+
+granularity:    10min
+discharge_type: [CG, IC]
+radius_km:      8
+
+network_bbox: [42.5, 50.2, 0.0, 17.0]   # [lat_min, lat_max, lon_min, lon_max]
+
+archive_path:   /store_new/mch/msclim/hamann/database/lightning/THX
+icon_grid_file: /store_new/mch/msclim/pronos/icon_grid_0001_R19B08_mch.nc
+output_dir:     /store_new/mch/msclim/lightning_on_icon

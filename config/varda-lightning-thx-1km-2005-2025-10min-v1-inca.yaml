@@ -1,0 +1,51 @@
+name: varda-lightning-thx-1km-2005-2025-10min-v1-inca
+
+description: |
+  THX lightning strike counts on the INCA / Swiss Grid LV95 regular grid
+  (710 × 640 cells, ~1 km, EPSG:2056) at 10-minute temporal resolution.
+
+  The data are preprocessed by ``lightning-grid`` (lightningpre_anemoi_dataset)
+  with the INCA target grid, which reprojects lightning strikes from WGS84
+  into the LV95 projected coordinate system and bins them onto the INCA cells.
+  The resulting NetCDF files contain 2-D WGS84 lat/lon auxiliary coordinate
+  arrays so that anemoi can ingest them as an unstructured-equivalent grid.
+
+  Source data: MeteoSwiss THX lightning archive
+    /store_new/mch/msclim/hamann/database/lightning/THX
+  Preprocessed by: lightningpre_anemoi_dataset (lightning-grid CLI,
+    config/preprocess/inca.yaml)
+  Preprocessed output: /store_new/mch/msclim/lightning_on_inca
+
+licence: CC BY 4.0
+attribution: MeteoSwiss
+resolution: 1km
+
+dates:
+  start: 2005-01-01T00:10
+  end: 2025-12-31T23:50
+  frequency: 10min
+
+build:
+  group_by: daily
+
+input:
+  join:
+
+    # icon_grid_path is intentionally omitted: INCA NetCDF files carry
+    # their own 2-D WGS84 lat/lon arrays (lat, lon) which earthkit uses
+    # directly — no external grid registry file is needed.
+    - thx-lightning:
+        data_dir: /store_new/mch/msclim/lightning_on_inca
+
+    - forcings:
+        template: ${input.join.0.thx-lightning}
+        param:
+          - cos_latitude
+          - cos_longitude
+          - sin_latitude
+          - sin_longitude
+          - cos_julian_day
+          - sin_julian_day
+          - cos_local_time
+          - sin_local_time
+          - insolation

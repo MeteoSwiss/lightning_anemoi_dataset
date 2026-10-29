@@ -1,0 +1,19 @@
+name: debug-lightning-inca
+
+description: Debug recipe — small date range on the INCA/LV95 grid.
+
+resolution: 1km
+
+dates:
+  start: 2020-01-01T00:10
+  end: 2020-01-01T01:00
+  frequency: 10min
+
+build:
+  group_by: daily
+
+input:
+  join:
+
+    - thx-lightning:
+        data_dir: /store_new/mch/msclim/lightning_on_inca
