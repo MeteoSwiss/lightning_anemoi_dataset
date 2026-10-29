@@ -1,0 +1,8 @@
+[submodule "packages/anemoi-plugins-meteoswiss"]
+	path = packages/anemoi-plugins-meteoswiss
+	url = https://github.com/MeteoSwiss/anemoi-plugins-meteoswiss
+	branch = main
+[submodule "packages/anemoi-datasets"]
+	path = packages/anemoi-datasets
+	url = https://github.com/ecmwf/anemoi-datasets
+	branch = main

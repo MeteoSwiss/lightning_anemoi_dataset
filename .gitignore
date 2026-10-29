@@ -1,0 +1,10 @@
+# Python
+.venv
+.python-version
+
+# Workspace
+*.grib
+*.nc
+*.zarr
+slogs
+_dev

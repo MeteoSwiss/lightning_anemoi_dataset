@@ -1,0 +1,20 @@
+[project]
+name = "template-anemoi-dataset"
+version = "0.1.0"
+description = "Template repository for anemoi-dataset-generating codebases."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "anemoi-datasets",
+    "anemoi-plugins-meteoswiss",
+]
+
+[tool.uv.workspace]
+members = [
+    "packages/anemoi-datasets",
+    "packages/anemoi-plugins-meteoswiss",
+]
+
+[tool.uv.sources]
+anemoi-datasets = { workspace = true, editable = true }
+anemoi-plugins-meteoswiss = { workspace = true, editable = true }
