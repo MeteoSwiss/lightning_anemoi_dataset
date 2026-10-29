@@ -167,10 +167,12 @@ sbatch scripts/build.sh inca
 
 Dataset configs are under `config/`:
 
-| Config | Grid | Period | Frequency |
-|---|---|---|---|
-| `varda-lightning-thx-1km-2005-2025-10min-v1.yaml` | ICON | 2005–2025 | 10 min |
-| `varda-lightning-thx-1km-2005-2025-10min-v1-inca.yaml` | INCA/RADAR | 2005–2025 | 10 min |
+| Config | Grid | Period | Frequency | Radius |
+|---|---|---|---|---|
+| `varda-lightning-thx-1km-2005-2025-10min-v1.yaml` | ICON | 2005–2025 | 10 min | 8 km |
+| `varda-lightning-thx-1km-2005-2025-10min-v1-inca.yaml` | INCA/RADAR | 2005–2025 | 10 min | 4 km |
+
+The preprocessed NetCDF files contain all radii (e.g. `[4, 8, 16]` km) under a `radius` dimension. The `radius_km` parameter in the recipe selects which one to use — so you can build separate datasets for different radii from the same preprocessed files without rerunning preprocessing.
 
 Debug configs for quick smoke tests (6 timesteps, 2020-01-01):
 
