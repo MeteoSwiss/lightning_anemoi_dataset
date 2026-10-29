@@ -1,10 +1,10 @@
-# lightningpre_anemoi_dataset configuration — INCA / Swiss Grid LV95
+# lightningpre_anemoi_dataset configuration — INCA/RADAR Swiss Grid LV95
 #
 # Usage:
 #   lightning-grid --config config/preprocess/inca.yaml
 #
 # Produces: /store_new/mch/msclim/lightning_on_inca/lightning_YYYYMMDD.nc
-# Grid    : INCA regular grid, 710 × 640 cells, ~1 km, CH1903+/LV95 (EPSG:2056)
+# Grid    : INCA/RADAR regular grid, 710 × 640 cells, ~1 km, CH1903+/LV95 (EPSG:2056)
 # Time    : 144 × 10-minute end-of-interval steps per day
 #
 # The output NetCDF must include 2-D WGS84 coordinate arrays:

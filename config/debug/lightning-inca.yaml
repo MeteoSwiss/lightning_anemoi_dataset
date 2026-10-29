@@ -1,6 +1,6 @@
 name: debug-lightning-inca
 
-description: Debug recipe — small date range on the INCA/LV95 grid.
+description: Debug recipe — small date range on the INCA/RADAR LV95 grid.
 
 resolution: 1km
 

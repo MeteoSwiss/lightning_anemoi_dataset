@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="lightning-grid",
-        description="Grid THX lightning data onto ICON-CH1 or INCA domains.",
+        description="Grid THX lightning data onto ICON-CH1 or INCA/RADAR domains.",
     )
     p.add_argument("--config", required=True, help="YAML configuration file")
     p.add_argument(
@@ -88,7 +88,7 @@ def _run_inca(cfg) -> None:
     from .grids.inca import IncaGrid
     from .output import write_inca_day
 
-    log.info("Building INCA grid (EPSG:2056)")
+    log.info("Building INCA/RADAR grid (EPSG:2056)")
     grid = IncaGrid(inca_grid_file=cfg.inca_grid_file or None)
 
     day = cfg.start.replace(hour=0, minute=0, second=0, microsecond=0)

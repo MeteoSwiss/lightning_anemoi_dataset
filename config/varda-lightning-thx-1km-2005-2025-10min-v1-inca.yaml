@@ -1,12 +1,12 @@
 name: varda-lightning-thx-1km-2005-2025-10min-v1-inca
 
 description: |
-  THX lightning strike counts on the INCA / Swiss Grid LV95 regular grid
+  THX lightning strike counts on the INCA/RADAR Swiss Grid LV95 regular grid
   (710 × 640 cells, ~1 km, EPSG:2056) at 10-minute temporal resolution.
 
   The data are preprocessed by ``lightning-grid`` (lightningpre_anemoi_dataset)
-  with the INCA target grid, which reprojects lightning strikes from WGS84
-  into the LV95 projected coordinate system and bins them onto the INCA cells.
+  with the INCA/RADAR target grid, which reprojects lightning strikes from WGS84
+  into the LV95 projected coordinate system and bins them onto the INCA/RADAR cells.
   The resulting NetCDF files contain 2-D WGS84 lat/lon auxiliary coordinate
   arrays so that anemoi can ingest them as an unstructured-equivalent grid.
 
@@ -31,7 +31,7 @@ build:
 input:
   join:
 
-    # icon_grid_path is intentionally omitted: INCA NetCDF files carry
+    # icon_grid_path is intentionally omitted: INCA/RADAR NetCDF files carry
     # their own 2-D WGS84 lat/lon arrays (lat, lon) which earthkit uses
     # directly — no external grid registry file is needed.
     - thx-lightning:

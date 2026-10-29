@@ -1,5 +1,5 @@
 #!/bin/bash
-# Grid THX lightning strikes onto ICON or INCA using the bundled lightning-grid CLI.
+# Grid THX lightning strikes onto ICON or INCA/RADAR using the bundled lightning-grid CLI.
 # The CLI is provided by src/lightning_anemoi_dataset and installed in the repo venv.
 #
 # Usage:

@@ -1,4 +1,4 @@
-"""Write daily NetCDF output files for ICON or INCA grids."""
+"""Write daily NetCDF output files for ICON or INCA/RADAR grids."""
 
 from __future__ import annotations
 
@@ -101,7 +101,7 @@ def write_inca_day(
     radii_km: list[float],
     output_dir: Path,
 ) -> Path:
-    """Write ``lightning_YYYYMMDD.nc`` for INCA 710×640 grid.
+    """Write ``lightning_YYYYMMDD.nc`` for INCA/RADAR 710×640 grid.
 
     Parameters
     ----------

@@ -1,4 +1,4 @@
-"""INCA 710×640 grid binning (CH1903+/LV95, EPSG:2056)."""
+"""INCA/RADAR 710×640 grid binning (CH1903+/LV95, EPSG:2056)."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ import pandas as pd
 from pyproj import Transformer
 from scipy.spatial import cKDTree
 
-# INCA domain constants — LV95 (EPSG:2056), 1 km spacing
+# INCA/RADAR domain constants — LV95 (EPSG:2056), 1 km spacing
 # LV95 easting  = LV03 easting  + 2,000,000
 # LV95 northing = LV03 northing + 1,000,000
 _NX = 710
@@ -24,7 +24,7 @@ _LV95_TO_WGS84 = Transformer.from_crs("EPSG:2056", "EPSG:4326", always_xy=True)
 
 
 def _build_inca_latlon() -> tuple[np.ndarray, np.ndarray]:
-    """Return 2D WGS84 lat/lon arrays for the INCA grid, shape (NY, NX)."""
+    """Return 2D WGS84 lat/lon arrays for the INCA/RADAR grid, shape (NY, NX)."""
     xs = _X0 + np.arange(_NX) * _DX      # easting  for each column
     ys = _Y0 + np.arange(_NY) * _DY      # northing for each row
     xx, yy = np.meshgrid(xs, ys)          # (NY, NX)
@@ -33,7 +33,7 @@ def _build_inca_latlon() -> tuple[np.ndarray, np.ndarray]:
 
 
 class IncaGrid:
-    """Bin lightning strikes onto the INCA 710×640 regular grid.
+    """Bin lightning strikes onto the INCA/RADAR 710×640 regular grid.
 
     The grid uses the Swiss CH1903+/LV95 (EPSG:2056) projection.
     Strikes are provided in WGS84, converted internally to LV95 before binning.

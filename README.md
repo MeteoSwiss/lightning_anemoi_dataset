@@ -1,6 +1,6 @@
 # lightning-anemoi-dataset
 
-Anemoi dataset recipes and preprocessing code for MeteoSwiss THX lightning data on the ICON-CH1 native grid and the INCA 710×640 domain.
+Anemoi dataset recipes and preprocessing code for MeteoSwiss THX lightning data on the ICON-CH1 native grid and the INCA/RADAR 710×640 domain.
 
 ## Getting started
 
@@ -55,7 +55,7 @@ Key fields:
 | Variant | Grid | Cells | CRS | Extra-str |
 |---|---|---|---|---|
 | **ICON** | ICON-CH1 R19B08 native unstructured | 1,147,980 | WGS84 | *(none)* |
-| **INCA** | INCA 710×640 regular | 454,400 | CH1903+/LV95 (EPSG:2056) | `-inca` |
+| **INCA/RADAR** | INCA/RADAR 710×640 regular | 454,400 | CH1903+/LV95 (EPSG:2056) | `-inca` |
 
 ### Preprocessing
 
@@ -63,7 +63,7 @@ Preprocessing converts raw `.prd` strike files into daily NetCDF files (`lightni
 
 ```
 lightning-grid --config config/preprocess/icon.yaml   # ICON native grid
-lightning-grid --config config/preprocess/inca.yaml   # INCA domain
+lightning-grid --config config/preprocess/inca.yaml   # INCA/RADAR domain
 ```
 
 Or submit to SLURM:
@@ -82,18 +82,18 @@ Output directories are set in the YAML configs under `config/preprocess/`.
 | `grid_type` | `icon` | Target grid: `icon` (ICON-CH1 native) or `inca` (710×640 LV95 regular). |
 | `granularity` | `10min` | Accumulation window and timestep per output file. Options: `10min`, `60min`, `24h`. |
 | `discharge_type` | `[CG, IC]` | Lightning types to include. `CG` = cloud-to-ground (`intra=0`), `IC` = intra-cloud (`intra=1`). |
-| `radius_km` | `8.0` | Accumulation radius in km. Accepts a single value or a list of 1–3 values (e.g. `[4, 8, 16]`). All radii are stored together in one NetCDF file under a `radius` dimension — the KD-tree is queried once per time step and thresholded per radius. `0` = nearest-neighbour only. 8 km is used in Coalition4; INCA typically uses 4 km; ICAO/WMO thunderstorm proximity threshold is 16 km. |
+| `radius_km` | `8.0` | Accumulation radius in km. Accepts a single value or a list of 1–3 values (e.g. `[4, 8, 16]`). All radii are stored together in one NetCDF file under a `radius` dimension — the KD-tree is queried once per time step and thresholded per radius. `0` = nearest-neighbour only. 8 km is used in Coalition4; INCA/RADAR typically uses 4 km; ICAO/WMO thunderstorm proximity threshold is 16 km. |
 | `network_bbox` | `[42.5, 50.2, 0.0, 17.0]` | THX network extent as `[lat_min, lat_max, lon_min, lon_max]`. Cells outside this box are masked. |
 | `archive_path` | `/store_new/mch/msclim/hamann/database/lightning/THX` | Root of the THX archive tree. Both `.prd` and `.prd.zip` files are supported. |
 | `icon_grid_file` | `/store_new/mch/msclim/pronos/icon_grid_0001_R19B08_mch.nc` | ICON-CH1 R19B08 native grid file (1,147,980 cells, ~0.7 km mean spacing). Only used when `grid_type: icon`. |
-| `inca_grid_file` | `/store_new/mch/msclim/INCA/INCA1km_topography_parameters.nc` | INCA topography NetCDF for optional coordinate verification. Only used when `grid_type: inca`. |
+| `inca_grid_file` | `/store_new/mch/msclim/INCA/INCA1km_topography_parameters.nc` | INCA/RADAR topography NetCDF for optional coordinate verification. Only used when `grid_type: inca`. |
 | `output_dir` | `.` | Directory where daily `lightning_YYYYMMDD.nc` files are written. Created if absent. |
 
 #### Distance computation
 
 **ICON** — chord distance on the unit sphere. Cell centres and strikes are converted to 3D Cartesian `(x, y, z)` coordinates; the KD-tree returns the Euclidean (chord) distance, which is a monotone proxy for great-circle distance. The radius cutoff converts km → chord length via `2 × sin(radius_km / 111.195°)`.
 
-**INCA** — Euclidean distance in projected metres. Strike coordinates are converted from WGS84 to LV95 (EPSG:2056) via pyproj; the KD-tree operates directly in metre space. Accurate because LV95 has very low metric distortion over the Alpine domain.
+**INCA/RADAR** — Euclidean distance in projected metres. Strike coordinates are converted from WGS84 to LV95 (EPSG:2056) via pyproj; the KD-tree operates directly in metre space. Accurate because LV95 has very low metric distortion over the Alpine domain.
 
 In both cases the KD-tree is **queried once per time step** using the largest radius, then results are thresholded for each smaller radius — so adding extra radii has negligible cost.
 
@@ -107,7 +107,7 @@ lightning_YYYYMMDD.nc
   coords: clat(ncells), clon(ncells), time(UTC), radius(km)
 ```
 
-**INCA** (`grid_type: inca`):
+**INCA/RADAR** (`grid_type: inca`):
 ```
 lightning_YYYYMMDD.nc
   dims:   time=144, radius=N, p_i=640, p_j=710
@@ -133,7 +133,7 @@ src/lightning_anemoi_dataset/
   extract.py      Raw .prd / .prd.zip reader
   grids/
     icon.py       ICON-CH1 KD-tree spatial binning
-    inca.py       INCA LV95 KD-tree spatial binning
+    inca.py       INCA/RADAR LV95 KD-tree spatial binning
   accumulate.py   Time-bin strikes into count arrays
   output.py       Write CF-1.8 compliant NetCDF
   cli.py          lightning-grid entry point
@@ -170,7 +170,7 @@ Dataset configs are under `config/`:
 | Config | Grid | Period | Frequency |
 |---|---|---|---|
 | `varda-lightning-thx-1km-2005-2025-10min-v1.yaml` | ICON | 2005–2025 | 10 min |
-| `varda-lightning-thx-1km-2005-2025-10min-v1-inca.yaml` | INCA | 2005–2025 | 10 min |
+| `varda-lightning-thx-1km-2005-2025-10min-v1-inca.yaml` | INCA/RADAR | 2005–2025 | 10 min |
 
 Debug configs for quick smoke tests (6 timesteps, 2020-01-01):
 
@@ -220,4 +220,4 @@ purpose-content-source-resolution-start-end-frequency-version[-extra-str]
 | start / end | `2005` / `2025` |
 | frequency | `10min` |
 | version | `v1` |
-| extra-str | *(none)* for ICON; `-inca` for INCA variant |
+| extra-str | *(none)* for ICON; `-inca` for INCA/RADAR variant |
