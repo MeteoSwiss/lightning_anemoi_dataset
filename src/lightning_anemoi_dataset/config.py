@@ -24,12 +24,17 @@ class Config:
     grid_type: Literal["icon", "inca"] = "icon"
     granularity: timedelta = field(default_factory=lambda: timedelta(minutes=10))
     discharge_type: list[str] = field(default_factory=lambda: ["CG", "IC"])
-    radius_km: float = 0.0
+    # 1–3 radius values in km. All stored in a single NetCDF with a radius dimension.
+    radius_km: list[float] = field(default_factory=lambda: [8.0])
     network_bbox: list[float] = field(default_factory=lambda: [42.5, 50.2, 0.0, 17.0])
     archive_path: str = DEFAULT_ARCHIVE
     icon_grid_file: str = DEFAULT_ICON_GRID
     inca_grid_file: str = DEFAULT_INCA_GRID
     output_dir: Path = field(default_factory=lambda: Path("."))
+
+    def __post_init__(self):
+        if not 1 <= len(self.radius_km) <= 3:
+            raise ValueError(f"radius_km must have 1–3 values, got {len(self.radius_km)}")
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> "Config":
@@ -41,7 +46,7 @@ class Config:
             grid_type=d.get("grid_type", "icon"),
             granularity=_parse_granularity(d.get("granularity", "10min")),
             discharge_type=d.get("discharge_type", ["CG", "IC"]),
-            radius_km=float(d.get("radius_km", 0.0)),
+            radius_km=_parse_radii(d.get("radius_km", 8.0)),
             network_bbox=d.get("network_bbox", [42.5, 50.2, 0.0, 17.0]),
             archive_path=d.get("archive_path", DEFAULT_ARCHIVE),
             icon_grid_file=d.get("icon_grid_file", DEFAULT_ICON_GRID),
@@ -52,6 +57,15 @@ class Config:
     @property
     def steps_per_day(self) -> int:
         return int(timedelta(days=1) / self.granularity)
+
+
+def _parse_radii(val) -> list[float]:
+    if isinstance(val, (int, float)):
+        return [float(val)]
+    radii = [float(r) for r in val]
+    if not 1 <= len(radii) <= 3:
+        raise ValueError(f"radius_km must have 1–3 values, got {len(radii)}")
+    return radii
 
 
 def _parse_granularity(val: str | int) -> timedelta:

@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import argparse
 import logging
-import sys
-from datetime import timedelta, timezone
+from datetime import timedelta
 from pathlib import Path
 
 log = logging.getLogger(__name__)
@@ -19,11 +18,11 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--config", required=True, help="YAML configuration file")
     p.add_argument(
         "--grid", choices=["icon", "inca"], default=None,
-        help="Override grid_type from config"
+        help="Override grid_type from config",
     )
     p.add_argument(
         "--date", default=None,
-        help="Process a single date (YYYYMMDD). Overrides start/stop in config."
+        help="Process a single date (YYYYMMDD). Overrides start/stop in config.",
     )
     p.add_argument("-v", "--verbose", action="store_true")
     return p
@@ -38,7 +37,6 @@ def main(argv: list[str] | None = None) -> None:
     )
 
     from .config import Config, _parse_dt
-    from .extract import read_thx_day
 
     cfg = Config.from_yaml(args.config)
     if args.grid is not None:
@@ -48,9 +46,10 @@ def main(argv: list[str] | None = None) -> None:
         cfg.start = _parse_dt(args.date)
         cfg.stop = cfg.start + timedelta(days=1)
 
-    log.info("Grid type : %s", cfg.grid_type)
-    log.info("Period    : %s – %s", cfg.start.date(), cfg.stop.date())
-    log.info("Output    : %s", cfg.output_dir)
+    log.info("Grid type  : %s", cfg.grid_type)
+    log.info("Period     : %s – %s", cfg.start.date(), cfg.stop.date())
+    log.info("Radii (km) : %s", cfg.radius_km)
+    log.info("Output     : %s", cfg.output_dir)
 
     if cfg.grid_type == "icon":
         _run_icon(cfg)
@@ -65,7 +64,7 @@ def _run_icon(cfg) -> None:
     from .output import write_icon_day
 
     log.info("Loading ICON grid: %s", cfg.icon_grid_file)
-    grid = IconGrid(cfg.icon_grid_file, radius_km=cfg.radius_km)
+    grid = IconGrid(cfg.icon_grid_file)
 
     day = cfg.start.replace(hour=0, minute=0, second=0, microsecond=0)
     while day < cfg.stop:
@@ -77,8 +76,9 @@ def _run_icon(cfg) -> None:
 
         log.info("Processing %s", day.date())
         strikes = read_thx_day(day, cfg.archive_path, cfg.discharge_type)
-        counts = accumulate_icon(strikes, day, cfg.granularity, grid)
-        write_icon_day(counts, day, cfg.granularity, grid.clat, grid.clon, Path(cfg.output_dir))
+        counts = accumulate_icon(strikes, day, cfg.granularity, grid, cfg.radius_km)
+        write_icon_day(counts, day, cfg.granularity, grid.clat, grid.clon,
+                       cfg.radius_km, Path(cfg.output_dir))
         day += timedelta(days=1)
 
 
@@ -88,8 +88,8 @@ def _run_inca(cfg) -> None:
     from .grids.inca import IncaGrid
     from .output import write_inca_day
 
-    log.info("Building INCA grid (EPSG:21781)")
-    grid = IncaGrid(radius_km=cfg.radius_km, inca_grid_file=cfg.inca_grid_file or None)
+    log.info("Building INCA grid (EPSG:2056)")
+    grid = IncaGrid(inca_grid_file=cfg.inca_grid_file or None)
 
     day = cfg.start.replace(hour=0, minute=0, second=0, microsecond=0)
     while day < cfg.stop:
@@ -101,8 +101,9 @@ def _run_inca(cfg) -> None:
 
         log.info("Processing %s", day.date())
         strikes = read_thx_day(day, cfg.archive_path, cfg.discharge_type)
-        counts = accumulate_inca(strikes, day, cfg.granularity, grid)
-        write_inca_day(counts, day, cfg.granularity, grid.lat, grid.lon, Path(cfg.output_dir))
+        counts = accumulate_inca(strikes, day, cfg.granularity, grid, cfg.radius_km)
+        write_inca_day(counts, day, cfg.granularity, grid.lat, grid.lon,
+                       cfg.radius_km, Path(cfg.output_dir))
         day += timedelta(days=1)
 
 

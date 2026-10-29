@@ -82,30 +82,40 @@ Output directories are set in the YAML configs under `config/preprocess/`.
 | `grid_type` | `icon` | Target grid: `icon` (ICON-CH1 native) or `inca` (710×640 LV95 regular). |
 | `granularity` | `10min` | Accumulation window and timestep per output file. Options: `10min`, `60min`, `24h`. |
 | `discharge_type` | `[CG, IC]` | Lightning types to include. `CG` = cloud-to-ground (`intra=0`), `IC` = intra-cloud (`intra=1`). |
-| `radius_km` | `8.0` | Each strike is counted in every cell within this radius. `0` = nearest-neighbour only. 8 km is used in Coalition4; INCA typically uses 4 km; ICAO/WMO thunderstorm proximity threshold is 16 km. |
+| `radius_km` | `8.0` | Accumulation radius in km. Accepts a single value or a list of 1–3 values (e.g. `[4, 8, 16]`). All radii are stored together in one NetCDF file under a `radius` dimension — the KD-tree is queried once per time step and thresholded per radius. `0` = nearest-neighbour only. 8 km is used in Coalition4; INCA typically uses 4 km; ICAO/WMO thunderstorm proximity threshold is 16 km. |
 | `network_bbox` | `[42.5, 50.2, 0.0, 17.0]` | THX network extent as `[lat_min, lat_max, lon_min, lon_max]`. Cells outside this box are masked. |
 | `archive_path` | `/store_new/mch/msclim/hamann/database/lightning/THX` | Root of the THX archive tree. Both `.prd` and `.prd.zip` files are supported. |
 | `icon_grid_file` | `/store_new/mch/msclim/pronos/icon_grid_0001_R19B08_mch.nc` | ICON-CH1 R19B08 native grid file (1,147,980 cells, ~0.7 km mean spacing). Only used when `grid_type: icon`. |
 | `inca_grid_file` | `/store_new/mch/msclim/INCA/INCA1km_topography_parameters.nc` | INCA topography NetCDF for optional coordinate verification. Only used when `grid_type: inca`. |
 | `output_dir` | `.` | Directory where daily `lightning_YYYYMMDD.nc` files are written. Created if absent. |
 
+#### Distance computation
+
+**ICON** — chord distance on the unit sphere. Cell centres and strikes are converted to 3D Cartesian `(x, y, z)` coordinates; the KD-tree returns the Euclidean (chord) distance, which is a monotone proxy for great-circle distance. The radius cutoff converts km → chord length via `2 × sin(radius_km / 111.195°)`.
+
+**INCA** — Euclidean distance in projected metres. Strike coordinates are converted from WGS84 to LV95 (EPSG:2056) via pyproj; the KD-tree operates directly in metre space. Accurate because LV95 has very low metric distortion over the Alpine domain.
+
+In both cases the KD-tree is **queried once per time step** using the largest radius, then results are thresholded for each smaller radius — so adding extra radii has negligible cost.
+
 #### Output format
 
 **ICON** (`grid_type: icon`):
 ```
 lightning_YYYYMMDD.nc
-  dims:   time=144, ncells=1_147_980
-  vars:   lightning_count(time, ncells)  [int16, fill=-1]
-  coords: clat(ncells), clon(ncells), time(UTC)
+  dims:   time=144, radius=N, ncells=1_147_980
+  vars:   lightning_count(time, radius, ncells)  [int16, fill=-1]
+  coords: clat(ncells), clon(ncells), time(UTC), radius(km)
 ```
 
 **INCA** (`grid_type: inca`):
 ```
 lightning_YYYYMMDD.nc
-  dims:   time=144, p_i=640, p_j=710
-  vars:   lightning_count(time, p_i, p_j)  [int16]
-  coords: lat(p_i, p_j), lon(p_i, p_j), time(UTC)
+  dims:   time=144, radius=N, p_i=640, p_j=710
+  vars:   lightning_count(time, radius, p_i, p_j)  [int16]
+  coords: lat(p_i, p_j), lon(p_i, p_j), time(UTC), radius(km)
 ```
+
+Select a specific radius with xarray: `ds.sel(radius=8.0)`.
 
 #### Typical wall-time estimates (10-min granularity, `radius_km: 8`)
 

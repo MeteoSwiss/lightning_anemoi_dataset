@@ -37,57 +37,61 @@ class IncaGrid:
 
     The grid uses the Swiss CH1903+/LV95 (EPSG:2056) projection.
     Strikes are provided in WGS84, converted internally to LV95 before binning.
-
-    Parameters
-    ----------
-    radius_km:
-        Maximum search radius in km. Strikes farther than this from any
-        cell centre are discarded. 0 = no radius cutoff.
-    inca_grid_file:
-        Optional path to an INCA NetCDF to derive/verify grid coordinates.
-        If None, the standard 710×640 domain constants are used.
     """
 
     NX = _NX
     NY = _NY
 
-    def __init__(self, radius_km: float = 0.0, inca_grid_file: str | Path | None = None):
-        self._radius_km = radius_km
+    def __init__(self, inca_grid_file: str | Path | None = None):
         self.lat, self.lon = _build_inca_latlon()   # (NY, NX)
 
-        # Build flat KD-tree in LV95 metre space for fast nearest-neighbour
         xs = _X0 + np.arange(_NX) * _DX
         ys = _Y0 + np.arange(_NY) * _DY
         xx, yy = np.meshgrid(xs, ys)                # (NY, NX)
         xy = np.column_stack([xx.ravel(), yy.ravel()])
         self._tree = cKDTree(xy)
-        self._radius_m = radius_km * 1_000.0 if radius_km > 0 else None
 
-    def bin(self, strikes: pd.DataFrame) -> np.ndarray:
-        """Count strikes per grid cell.
+    def bin(self, strikes: pd.DataFrame, radii_km: list[float]) -> np.ndarray:
+        """Count strikes per grid cell for each radius.
+
+        The KD-tree is queried once (using the maximum radius) and results are
+        thresholded per radius.
 
         Parameters
         ----------
         strikes:
             DataFrame with columns ``lon`` and ``lat`` (WGS84 degrees).
+        radii_km:
+            List of 1–3 search radii in km. ``0`` means nearest-neighbour only.
 
         Returns
         -------
-        int32 array of shape ``(NY, NX)`` with counts.
+        int32 array of shape ``(n_radii, NY, NX)``.
         """
-        counts = np.zeros(_NY * _NX, dtype=np.int32)
+        n_radii = len(radii_km)
+        counts = np.zeros((n_radii, _NY * _NX), dtype=np.int32)
+
         if strikes.empty:
-            return counts.reshape(_NY, _NX)
+            return counts.reshape(n_radii, _NY, _NX)
 
         sx, sy = _WGS84_TO_LV95.transform(strikes["lon"].values, strikes["lat"].values)
         xy = np.column_stack([sx, sy])
 
-        if self._radius_m is not None:
-            dists, indices = self._tree.query(xy, k=1, workers=-1)
-            mask = dists <= self._radius_m
-            indices = indices[mask]
-        else:
-            _, indices = self._tree.query(xy, k=1, workers=-1)
+        max_radius = max(radii_km)
+        max_radius_m = max_radius * 1_000.0
 
-        np.add.at(counts, indices, 1)
-        return counts.reshape(_NY, _NX)
+        if max_radius > 0:
+            dists, indices = self._tree.query(xy, k=1, workers=-1,
+                                              distance_upper_bound=max_radius_m)
+            valid = dists < np.inf
+        else:
+            dists, indices = self._tree.query(xy, k=1, workers=-1)
+            valid = np.ones(len(dists), dtype=bool)
+
+        thresholds_m = [r * 1_000.0 if r > 0 else np.inf for r in radii_km]
+
+        for i, thresh in enumerate(thresholds_m):
+            mask = valid & (dists <= thresh)
+            np.add.at(counts[i], indices[mask], 1)
+
+        return counts.reshape(n_radii, _NY, _NX)

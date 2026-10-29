@@ -10,6 +10,11 @@ import xarray as xr
 from scipy.spatial import cKDTree
 
 
+def _km_to_chord(radius_km: float) -> float:
+    """Convert a great-circle radius in km to unit-sphere chord length."""
+    return 2.0 * np.sin(np.radians(radius_km / 111.195))
+
+
 class IconGrid:
     """Bin lightning strikes onto the ICON-CH1 R19B08 native grid.
 
@@ -17,17 +22,13 @@ class IconGrid:
     ----------
     grid_file:
         Path to the ICON grid NetCDF (e.g. icon_grid_0001_R19B08_mch.nc).
-    radius_km:
-        Maximum search radius in km. Strikes farther than this from any
-        cell centre are discarded. 0 = no radius cutoff.
     """
 
-    def __init__(self, grid_file: str | Path, radius_km: float = 0.0):
+    def __init__(self, grid_file: str | Path):
         ds = xr.open_dataset(grid_file, engine="netcdf4")
         self.clat = np.degrees(ds["clat"].values)   # (ncells,)
         self.clon = np.degrees(ds["clon"].values)   # (ncells,)
         self.ncells = len(self.clat)
-        self._radius_km = radius_km
 
         lat_r = np.radians(self.clat)
         lon_r = np.radians(self.clon)
@@ -37,23 +38,29 @@ class IconGrid:
             np.sin(lat_r),
         ])
         self._tree = cKDTree(xyz)
-        # chord length for radius cutoff
-        self._chord_max = (2 * np.sin(np.radians(radius_km / 111.195))) if radius_km > 0 else None
 
-    def bin(self, strikes: pd.DataFrame) -> np.ndarray:
-        """Count strikes per cell.
+    def bin(self, strikes: pd.DataFrame, radii_km: list[float]) -> np.ndarray:
+        """Count strikes per cell for each radius.
+
+        The KD-tree is queried once (using the maximum radius) and results are
+        thresholded per radius — one pass over the data regardless of how many
+        radii are requested.
 
         Parameters
         ----------
         strikes:
             DataFrame with columns ``lon`` and ``lat`` (WGS84 degrees).
+        radii_km:
+            List of 1–3 search radii in km. ``0`` means nearest-neighbour only
+            (no distance cutoff).
 
         Returns
         -------
-        int32 array of shape ``(ncells,)`` with counts; -1 for no-data cells
-        when ``strikes`` is empty.
+        int32 array of shape ``(n_radii, ncells)``.
         """
-        counts = np.zeros(self.ncells, dtype=np.int32)
+        n_radii = len(radii_km)
+        counts = np.zeros((n_radii, self.ncells), dtype=np.int32)
+
         if strikes.empty:
             return counts
 
@@ -65,12 +72,19 @@ class IconGrid:
             np.sin(lat_r),
         ])
 
-        if self._chord_max is not None:
-            dists, indices = self._tree.query(xyz, k=1, workers=-1)
-            mask = dists <= self._chord_max
-            indices = indices[mask]
+        max_radius = max(radii_km)
+        if max_radius > 0:
+            chord_max = _km_to_chord(max_radius)
+            dists, indices = self._tree.query(xyz, k=1, workers=-1, distance_upper_bound=chord_max)
+            valid = dists < np.inf   # points within max radius
         else:
-            _, indices = self._tree.query(xyz, k=1, workers=-1)
+            dists, indices = self._tree.query(xyz, k=1, workers=-1)
+            valid = np.ones(len(dists), dtype=bool)
 
-        np.add.at(counts, indices, 1)
+        chord_thresholds = [_km_to_chord(r) if r > 0 else np.inf for r in radii_km]
+
+        for i, chord in enumerate(chord_thresholds):
+            mask = valid & (dists <= chord)
+            np.add.at(counts[i], indices[mask], 1)
+
         return counts

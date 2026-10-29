@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
@@ -17,6 +17,7 @@ def write_icon_day(
     granularity: timedelta,
     clat: np.ndarray,
     clon: np.ndarray,
+    radii_km: list[float],
     output_dir: Path,
 ) -> Path:
     """Write ``lightning_YYYYMMDD.nc`` for ICON native grid.
@@ -24,31 +25,31 @@ def write_icon_day(
     Parameters
     ----------
     counts:
-        int16 array ``(n_times, ncells)``.  -1 = fill (no-data).
+        int16 array ``(n_times, n_radii, ncells)``.
     day:
         Calendar day (UTC).
     granularity:
         Time step width.
     clat, clon:
         Cell-centre latitudes / longitudes in degrees ``(ncells,)``.
+    radii_km:
+        Accumulation radii in km (stored as a coordinate).
     output_dir:
         Directory to write into (created if missing).
     """
     bins = time_bins(day, granularity)
     times = np.array([t.timestamp() for t in bins], dtype="float64")
-
-    ncells = counts.shape[1]
-    cell_idx = np.arange(ncells, dtype=np.int32)
+    radii = np.array(radii_km, dtype="float32")
+    ncells = counts.shape[2]
 
     ds = xr.Dataset(
         {
             "lightning_count": xr.DataArray(
                 counts,
-                dims=["time", "ncells"],
+                dims=["time", "radius", "ncells"],
                 attrs={
                     "long_name": "lightning strike count",
                     "units": "1",
-                    "_FillValue": np.int16(-1),
                 },
             ),
             "clat": xr.DataArray(
@@ -67,7 +68,11 @@ def write_icon_day(
                        "calendar": "proleptic_gregorian",
                        "standard_name": "time"},
             ),
-            "ncells": cell_idx,
+            "radius": xr.DataArray(
+                radii, dims=["radius"],
+                attrs={"long_name": "accumulation radius", "units": "km"},
+            ),
+            "ncells": np.arange(ncells, dtype=np.int32),
         },
         attrs={
             "Conventions": "CF-1.8",
@@ -93,6 +98,7 @@ def write_inca_day(
     granularity: timedelta,
     lat: np.ndarray,
     lon: np.ndarray,
+    radii_km: list[float],
     output_dir: Path,
 ) -> Path:
     """Write ``lightning_YYYYMMDD.nc`` for INCA 710×640 grid.
@@ -100,29 +106,31 @@ def write_inca_day(
     Parameters
     ----------
     counts:
-        int16 array ``(n_times, NY, NX)``.
+        int16 array ``(n_times, n_radii, NY, NX)``.
     day:
         Calendar day (UTC).
     granularity:
         Time step width.
     lat, lon:
         2-D WGS84 arrays ``(NY, NX)``.
+    radii_km:
+        Accumulation radii in km (stored as a coordinate).
     output_dir:
         Directory to write into (created if missing).
     """
     bins = time_bins(day, granularity)
     times = np.array([t.timestamp() for t in bins], dtype="float64")
-    ny, nx = counts.shape[1], counts.shape[2]
+    radii = np.array(radii_km, dtype="float32")
+    ny, nx = counts.shape[2], counts.shape[3]
 
     ds = xr.Dataset(
         {
             "lightning_count": xr.DataArray(
                 counts,
-                dims=["time", "p_i", "p_j"],
+                dims=["time", "radius", "p_i", "p_j"],
                 attrs={
                     "long_name": "lightning strike count",
                     "units": "1",
-                    "_FillValue": np.int16(-1),
                 },
             ),
             "lat": xr.DataArray(
@@ -140,6 +148,10 @@ def write_inca_day(
                 attrs={"units": "seconds since 1970-01-01 00:00:00 UTC",
                        "calendar": "proleptic_gregorian",
                        "standard_name": "time"},
+            ),
+            "radius": xr.DataArray(
+                radii, dims=["radius"],
+                attrs={"long_name": "accumulation radius", "units": "km"},
             ),
             "p_i": np.arange(ny, dtype=np.int32),
             "p_j": np.arange(nx, dtype=np.int32),
