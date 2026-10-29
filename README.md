@@ -25,13 +25,30 @@ The workspace installs three packages into `.venv`:
 
 ### Data source
 
-Raw lightning data comes from the [Vaisala THX](https://www.vaisala.com/en/products/systems/lightning-detection) network, archived at MeteoSwiss as pipe-separated `.prd` / `.prd.zip` files under:
+Raw lightning data comes from the [Vaisala THX](https://www.vaisala.com/en/products/systems/lightning-detection) network, archived at MeteoSwiss under:
 
 ```
 /store_new/mch/msclim/hamann/database/lightning/THX/YYYY/MM/YYYYMMDD.prd[.zip]
 ```
 
-Each line contains: date/time (UTC), lon, lat, peak current, and discharge type (`intra` field: 0=CG, 1=IC).
+**Format:** pipe-separated (`|`), one strike per row:
+
+```
+date time UTC | lon | lat | current | nS | mode | intra | Ax | Ki2 | Exc | Incl | Arc | ...
+```
+
+Key fields:
+
+| Field | Description |
+|---|---|
+| `date time UTC` | Timestamp to millisecond precision, e.g. `01.01.2020 00:01:23.456 UTC` |
+| `lon` / `lat` | Geographic coordinates in decimal degrees (WGS84) |
+| `current` | Peak current in kA (positive = positive stroke) |
+| `intra` | Discharge type: `0` = cloud-to-ground (CG), `1` = intra-cloud (IC) |
+
+**Coverage:** 2005-01-01 to present (~4,000 zipped + ~300 uncompressed files).
+
+**Network extent:** approximately `lat ∈ [42.5, 50.2]`, `lon ∈ [0.0, 17.0]` (central Europe, centred on Switzerland).
 
 ### Grid variants
 
@@ -65,7 +82,7 @@ Output directories are set in the YAML configs under `config/preprocess/`.
 | `grid_type` | `icon` | Target grid: `icon` (ICON-CH1 native) or `inca` (710×640 LV95 regular). |
 | `granularity` | `10min` | Accumulation window and timestep per output file. Options: `10min`, `60min`, `24h`. |
 | `discharge_type` | `[CG, IC]` | Lightning types to include. `CG` = cloud-to-ground (`intra=0`), `IC` = intra-cloud (`intra=1`). |
-| `radius_km` | `8.0` | Each strike is counted in every cell within this radius. `0` = nearest-neighbour only. 8 km is used in Coalition4; INCA typically uses 1 km; ICAO/WMO thunderstorm proximity threshold is 16 km. |
+| `radius_km` | `8.0` | Each strike is counted in every cell within this radius. `0` = nearest-neighbour only. 8 km is used in Coalition4; INCA typically uses 4 km; ICAO/WMO thunderstorm proximity threshold is 16 km. |
 | `network_bbox` | `[42.5, 50.2, 0.0, 17.0]` | THX network extent as `[lat_min, lat_max, lon_min, lon_max]`. Cells outside this box are masked. |
 | `archive_path` | `/store_new/mch/msclim/hamann/database/lightning/THX` | Root of the THX archive tree. Both `.prd` and `.prd.zip` files are supported. |
 | `icon_grid_file` | `/store_new/mch/msclim/pronos/icon_grid_0001_R19B08_mch.nc` | ICON-CH1 R19B08 native grid file (1,147,980 cells, ~0.7 km mean spacing). Only used when `grid_type: icon`. |
