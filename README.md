@@ -166,25 +166,51 @@ sbatch scripts/preprocess.sh icon
 2. Build the anemoi dataset:
 
 ```bash
-sbatch scripts/build.sh icon
-# or
-sbatch scripts/build.sh inca
+sbatch scripts/build.sh icon 8    # ICON grid, 8 km radius
+sbatch scripts/build.sh inca 16   # INCA/RADAR grid, 16 km radius
 ```
 
-Dataset configs are under `config/`:
+`build.sh` reads `start`/`stop` dates and paths from the corresponding preprocess config and generates the dataset config on-the-fly. The output zarr name is derived from the grid, date range, and radius (e.g. `varda-lightning-thx-1km-2025-10min-v1-inca-r16.zarr`).
 
-| Config | Grid | Period | Frequency | Radius |
-|---|---|---|---|---|
-| `varda-lightning-thx-1km-2005-2025-10min-v1.yaml` | ICON | 2005–2025 | 10 min | 8 km |
-| `varda-lightning-thx-1km-2005-2025-10min-v1-inca.yaml` | INCA/RADAR | 2005–2025 | 10 min | 8 km |
+The preprocessed NetCDF files contain all radii (e.g. `[4, 8, 16]` km) under a `radius` dimension, so building a dataset for a different radius requires no reprocessing — just pass a different `radius_km` to `build.sh`.
 
-The preprocessed NetCDF files contain all radii (e.g. `[4, 8, 16]` km) under a `radius` dimension. The `radius_km` parameter in the recipe selects which one to use — so you can build separate datasets for different radii from the same preprocessed files without rerunning preprocessing.
-
-Debug configs for quick smoke tests (6 timesteps, 2020-01-01):
+Debug configs for a quick smoke test (6 hours, 2025-08-01 — requires preprocessed files):
 
 ```bash
-anemoi-datasets create config/debug/lightning.yaml /tmp/test-icon.zarr
-anemoi-datasets create config/debug/lightning-inca.yaml /tmp/test-inca.zarr
+MALLOC_CHECK_=0 anemoi-datasets create config/debug/lightning-icon.yaml /tmp/test-icon.zarr
+MALLOC_CHECK_=0 anemoi-datasets create config/debug/lightning-inca.yaml /tmp/test-inca.zarr
+```
+
+> `MALLOC_CHECK_=0` suppresses a harmless double-free in C extensions during Python shutdown.
+
+### Inspecting a dataset
+
+```bash
+# Summary: shape, dates, frequency, variables, statistics
+anemoi-datasets inspect /path/to/dataset.zarr
+```
+
+```python
+from anemoi.datasets import open_dataset
+import numpy as np
+
+ds = open_dataset("/path/to/dataset.zarr")
+print(ds)                    # summary
+print(ds.dates)              # all timestamps
+print(ds.variables)          # ['lightning_count']
+print(ds.latitudes.shape)    # (454400,) for INCA, (1147980,) for ICON
+
+arr = ds[0]                  # first timestep → numpy array (1, n_cells)
+print(arr.max())             # peak count that step
+```
+
+```python
+# Raw zarr access
+import zarr
+z = zarr.open("/path/to/dataset.zarr")
+print(z.tree())              # full array tree
+print(z.attrs["resolution"]) # '1km'
+print(z["data"].shape)       # (time, variable, ensemble, cell)
 ```
 
 ## Pre-generation checklist

@@ -23,7 +23,7 @@ resolution: 1km
 dates:
   start: 2005-01-01T00:10
   end: 2025-12-31T23:50
-  frequency: 10min
+  frequency: 10m
 
 build:
   group_by: daily

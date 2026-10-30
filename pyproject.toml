@@ -21,10 +21,16 @@ dependencies = [
     "xarray",
     "netCDF4",
     "pyyaml",
+    "cartopy>=0.26.0",
 ]
 
 [project.scripts]
 lightning-grid = "lightning_anemoi_dataset.cli:main"
+
+[dependency-groups]
+dev = [
+    "matplotlib>=3.11.2",
+]
 
 [tool.uv.workspace]
 members = [

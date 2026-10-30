@@ -1,13 +1,13 @@
 name: debug-lightning
 
-description: Debug recipe — small date range to test the thx-lightning source.
+description: Debug recipe — 6 hours on 2025-08-01 to smoke-test the thx-lightning ICON source.
 
 resolution: 1km
 
 dates:
-  start: 2020-01-01T00:10
-  end: 2020-01-01T01:00
-  frequency: 10min
+  start: 2025-08-01T00:10
+  end:   2025-08-01T06:00
+  frequency: 10m
 
 build:
   group_by: daily
