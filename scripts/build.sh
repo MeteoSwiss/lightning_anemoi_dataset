@@ -23,8 +23,9 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="$(dirname "$SCRIPT_DIR")"
+# SLURM copies the script to a temp dir, so BASH_SOURCE[0] won't point to the repo.
+# SLURM_SUBMIT_DIR is the directory where sbatch was called from (the repo root).
+REPO_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 
 GRID="${1:-icon}"
 RADIUS="${2:-8}"
