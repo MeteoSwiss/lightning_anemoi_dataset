@@ -10,7 +10,6 @@ import yaml
 
 DEFAULT_ARCHIVE = "/store_new/mch/msclim/hamann/database/lightning/THX"
 DEFAULT_ICON_GRID = "/store_new/mch/msclim/pronos/icon_grid_0001_R19B08_mch.nc"
-DEFAULT_INCA_GRID = "/store_new/mch/msclim/INCA/INCA1km_topography_parameters.nc"
 
 _GRANULARITY_MAP = {
     "10min": 10, "60min": 60, "1h": 60, "24h": 1440, "1d": 1440,
@@ -29,7 +28,6 @@ class Config:
     network_bbox: list[float] = field(default_factory=lambda: [42.5, 50.2, 0.0, 17.0])
     archive_path: str = DEFAULT_ARCHIVE
     icon_grid_file: str = DEFAULT_ICON_GRID
-    inca_grid_file: str = DEFAULT_INCA_GRID
     output_dir: Path = field(default_factory=lambda: Path("."))
 
     def __post_init__(self):
@@ -50,7 +48,6 @@ class Config:
             network_bbox=d.get("network_bbox", [42.5, 50.2, 0.0, 17.0]),
             archive_path=d.get("archive_path", DEFAULT_ARCHIVE),
             icon_grid_file=d.get("icon_grid_file", DEFAULT_ICON_GRID),
-            inca_grid_file=d.get("inca_grid_file", DEFAULT_INCA_GRID),
             output_dir=Path(d.get("output_dir", ".")),
         )
 

@@ -89,7 +89,7 @@ def _run_inca(cfg) -> None:
     from .output import write_inca_day
 
     log.info("Building INCA/RADAR grid (EPSG:2056)")
-    grid = IncaGrid(inca_grid_file=cfg.inca_grid_file or None)
+    grid = IncaGrid()
 
     day = cfg.start.replace(hour=0, minute=0, second=0, microsecond=0)
     while day < cfg.stop:

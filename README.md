@@ -86,7 +86,6 @@ Output directories are set in the YAML configs under `config/preprocess/`.
 | `network_bbox` | `[42.5, 50.2, 0.0, 17.0]` | THX network extent as `[lat_min, lat_max, lon_min, lon_max]`. Cells outside this box are masked. |
 | `archive_path` | `/store_new/mch/msclim/hamann/database/lightning/THX` | Root of the THX archive tree. Both `.prd` and `.prd.zip` files are supported. |
 | `icon_grid_file` | `/store_new/mch/msclim/pronos/icon_grid_0001_R19B08_mch.nc` | ICON-CH1 R19B08 native grid file (1,147,980 cells, ~0.7 km mean spacing). Only used when `grid_type: icon`. |
-| `inca_grid_file` | `/store_new/mch/msclim/INCA/INCA1km_topography_parameters.nc` | INCA/RADAR topography NetCDF for optional coordinate verification. Only used when `grid_type: inca`. |
 | `output_dir` | `.` | Directory where daily `lightning_YYYYMMDD.nc` files are written. Created if absent. |
 
 #### Distance computation

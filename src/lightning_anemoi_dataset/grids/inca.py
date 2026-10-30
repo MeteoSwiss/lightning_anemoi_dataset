@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import numpy as np
 import pandas as pd
 from pyproj import Transformer
@@ -42,7 +40,7 @@ class IncaGrid:
     NX = _NX
     NY = _NY
 
-    def __init__(self, inca_grid_file: str | Path | None = None):
+    def __init__(self):
         self.lat, self.lon = _build_inca_latlon()   # (NY, NX)
 
         xs = _X0 + np.arange(_NX) * _DX
