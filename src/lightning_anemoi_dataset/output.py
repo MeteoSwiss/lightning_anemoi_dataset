@@ -82,7 +82,7 @@ def write_icon_day(
     )
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    out = output_dir / f"lightning_{day.strftime('%Y%m%d')}.nc"
+    out = output_dir / f"lightning_icon_{day.strftime('%Y%m%d')}.nc"
     encoding = {
         "lightning_count": {"zlib": True, "complevel": 4, "dtype": "int16", "_FillValue": -1},
         "clat": {"zlib": True, "complevel": 1},
@@ -165,7 +165,7 @@ def write_inca_day(
     )
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    out = output_dir / f"lightning_{day.strftime('%Y%m%d')}.nc"
+    out = output_dir / f"lightning_inca_{day.strftime('%Y%m%d')}.nc"
     encoding = {
         "lightning_count": {"zlib": True, "complevel": 4, "dtype": "int16", "_FillValue": -1},
         "lat": {"zlib": True, "complevel": 1},

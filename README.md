@@ -59,7 +59,7 @@ Key fields:
 
 ### Preprocessing
 
-Preprocessing converts raw `.prd` strike files into daily NetCDF files (`lightning_YYYYMMDD.nc`) that are then consumed by `anemoi-datasets`.
+Preprocessing converts raw `.prd` strike files into daily NetCDF files (`lightning_icon_YYYYMMDD.nc` / `lightning_inca_YYYYMMDD.nc`) written to a shared output directory, then consumed by `anemoi-datasets`.
 
 ```
 lightning-grid --config config/preprocess/icon.yaml   # ICON native grid
@@ -86,7 +86,7 @@ Output directories are set in the YAML configs under `config/preprocess/`.
 | `network_bbox` | `[42.5, 50.2, 0.0, 17.0]` | THX network extent as `[lat_min, lat_max, lon_min, lon_max]`. Cells outside this box are masked. |
 | `archive_path` | `/store_new/mch/msclim/hamann/database/lightning/THX` | Root of the THX archive tree. Both `.prd` and `.prd.zip` files are supported. |
 | `icon_grid_file` | `/store_new/mch/msclim/pronos/icon_grid_0001_R19B08_mch.nc` | ICON-CH1 R19B08 native grid file (1,147,980 cells, ~0.7 km mean spacing). Only used when `grid_type: icon`. |
-| `output_dir` | `.` | Directory where daily `lightning_YYYYMMDD.nc` files are written. Created if absent. |
+| `output_dir` | `.` | Shared directory where daily NetCDF files are written (`lightning_icon_YYYYMMDD.nc` or `lightning_inca_YYYYMMDD.nc`). Created if absent. |
 
 #### Distance computation
 
@@ -100,7 +100,7 @@ In both cases the KD-tree is **queried once per time step** using the largest ra
 
 **ICON** (`grid_type: icon`):
 ```
-lightning_YYYYMMDD.nc
+lightning_icon_YYYYMMDD.nc
   dims:   time=144, radius=N, ncells=1_147_980
   vars:   lightning_count(time, radius, ncells)  [int16, fill=-1]
   coords: clat(ncells), clon(ncells), time(UTC), radius(km)
@@ -108,11 +108,13 @@ lightning_YYYYMMDD.nc
 
 **INCA/RADAR** (`grid_type: inca`):
 ```
-lightning_YYYYMMDD.nc
+lightning_inca_YYYYMMDD.nc
   dims:   time=144, radius=N, p_i=640, p_j=710
   vars:   lightning_count(time, radius, p_i, p_j)  [int16]
   coords: lat(p_i, p_j), lon(p_i, p_j), time(UTC), radius(km)
 ```
+
+Both are written to the same directory (`/store_new/mch/msclim/lightning_gridded`).
 
 Select a specific radius with xarray: `ds.sel(radius=8.0)`.
 

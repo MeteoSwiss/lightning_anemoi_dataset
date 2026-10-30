@@ -16,5 +16,6 @@ input:
   join:
 
     - thx-lightning:
-        data_dir: /store_new/mch/msclim/lightning_on_inca
+        data_dir: /store_new/mch/msclim/lightning_gridded
+        grid_type: inca
         radius_km: 8

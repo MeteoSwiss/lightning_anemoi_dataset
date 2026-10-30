@@ -14,7 +14,7 @@ description: |
     /store_new/mch/msclim/hamann/database/lightning/THX
   Preprocessed by: lightningpre_anemoi_dataset (lightning-grid CLI,
     config/preprocess/inca.yaml)
-  Preprocessed output: /store_new/mch/msclim/lightning_on_inca
+  Preprocessed output: /store_new/mch/msclim/lightning_gridded
 
 licence: CC BY 4.0
 attribution: MeteoSwiss
@@ -35,7 +35,8 @@ input:
     # their own 2-D WGS84 lat/lon arrays (lat, lon) which earthkit uses
     # directly — no external grid registry file is needed.
     - thx-lightning:
-        data_dir: /store_new/mch/msclim/lightning_on_inca
+        data_dir: /store_new/mch/msclim/lightning_gridded
+        grid_type: inca
         radius_km: 8
 
     - forcings:

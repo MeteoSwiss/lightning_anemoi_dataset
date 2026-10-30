@@ -13,7 +13,7 @@ description: |
   Source data: MeteoSwiss THX lightning archive
     /store_new/mch/msclim/hamann/database/lightning/THX
   Preprocessed by: lightningpre_anemoi_dataset (lightning-gridding CLI)
-  Preprocessed output: /store_new/mch/msclim/lightning_on_icon
+  Preprocessed output: /store_new/mch/msclim/lightning_gridded
 
 licence: CC BY 4.0
 attribution: MeteoSwiss
@@ -31,7 +31,8 @@ input:
   join:
 
     - thx-lightning:
-        data_dir: /store_new/mch/msclim/lightning_on_icon
+        data_dir: /store_new/mch/msclim/lightning_gridded
+        grid_type: icon
         radius_km: 8
         icon_grid_path: /store_new/mch/msclim/pronos/icon_grid_0001_R19B08_mch.nc
 

@@ -68,7 +68,7 @@ def _run_icon(cfg) -> None:
 
     day = cfg.start.replace(hour=0, minute=0, second=0, microsecond=0)
     while day < cfg.stop:
-        out_file = Path(cfg.output_dir) / f"lightning_{day.strftime('%Y%m%d')}.nc"
+        out_file = Path(cfg.output_dir) / f"lightning_icon_{day.strftime('%Y%m%d')}.nc"
         if out_file.exists():
             log.debug("Skip (exists): %s", out_file.name)
             day += timedelta(days=1)
@@ -93,7 +93,7 @@ def _run_inca(cfg) -> None:
 
     day = cfg.start.replace(hour=0, minute=0, second=0, microsecond=0)
     while day < cfg.stop:
-        out_file = Path(cfg.output_dir) / f"lightning_{day.strftime('%Y%m%d')}.nc"
+        out_file = Path(cfg.output_dir) / f"lightning_inca_{day.strftime('%Y%m%d')}.nc"
         if out_file.exists():
             log.debug("Skip (exists): %s", out_file.name)
             day += timedelta(days=1)
