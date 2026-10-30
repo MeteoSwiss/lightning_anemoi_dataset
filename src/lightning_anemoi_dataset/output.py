@@ -154,6 +154,7 @@ def write_icon_day(
                 "cell_method": f"time: sum (bnds: end, interval: {gran_str})",
                 "temporal_resolution": gran_str,
                 "spatial_resolution": "1000 m",
+                "resolution": "1km",
             },
         ),
         "time_bnds": xr.DataArray(
@@ -327,6 +328,7 @@ def write_inca_day(
                 "temporal_resolution": gran_str,
                 "spatial_resolution": "1000 m",
                 "grid_mapping": "swiss_lv95_coordinates",
+                "resolution": "1km",
             },
         ),
         "swiss_lv95_coordinates": xr.DataArray(

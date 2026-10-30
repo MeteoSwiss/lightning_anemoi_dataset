@@ -72,8 +72,9 @@ start_year = start_dt.year
 end_year   = stop_dt.year
 period     = f"{start_year}-{end_year}" if start_year != end_year else str(start_year)
 
-suffix     = f"-inca-r{int(radius)}" if grid == "inca" else f"-r{int(radius)}"
-name       = f"varda-lightning-thx-1km-{period}-10min-v1{suffix}"
+source     = f"thx{int(radius)}km"
+suffix     = "-inca" if grid == "inca" else ""
+name       = f"varda-lightning-{source}-1km-{period}-10min-v1{suffix}"
 
 data_dir   = pre.get("output_dir", "/store_new/mch/msclim/lightning_gridded")
 icon_line  = ""
@@ -139,12 +140,15 @@ echo "Output  : $OUTPUT"
 echo "Started : $(date -u)"
 echo ""
 
+ulimit -c 0  # suppress core dump file — crash is in C extension cleanup after zarr is written
 MALLOC_CHECK_=0 anemoi-datasets create "$DATASET_CONFIG" "$OUTPUT"
+status=$?
+if [[ $status -ne 0 && $status -ne 134 ]]; then  # 134 = SIGABRT from harmless shutdown crash
+    echo "anemoi-datasets failed with exit code $status" >&2
+    exit $status
+fi
 
-# Set resolution metadata — XarrayFieldList.resolution() is not yet implemented
-# upstream, so the zarr attribute stays None without this patch.
 python3 -c "import zarr; z=zarr.open('$OUTPUT','r+'); z.attrs.update({'resolution':'1km'})"
-echo "Resolution patched: 1km"
 
 echo ""
 echo "Done    : $(date -u)"

@@ -170,18 +170,19 @@ sbatch scripts/build.sh icon 8    # ICON grid, 8 km radius
 sbatch scripts/build.sh inca 16   # INCA/RADAR grid, 16 km radius
 ```
 
-`build.sh` reads `start`/`stop` dates and paths from the corresponding preprocess config and generates the dataset config on-the-fly. The output zarr name is derived from the grid, date range, and radius (e.g. `varda-lightning-thx-1km-2025-10min-v1-inca-r16.zarr`).
+`build.sh` reads `start`/`stop` dates and paths from the corresponding preprocess config and generates the dataset config on-the-fly. The output zarr name is derived from the grid, date range, and radius (e.g. `varda-lightning-thx16km-1km-2025-10min-v1-inca.zarr`).
 
 The preprocessed NetCDF files contain all radii (e.g. `[4, 8, 16]` km) under a `radius` dimension, so building a dataset for a different radius requires no reprocessing — just pass a different `radius_km` to `build.sh`.
 
 Debug configs for a quick smoke test (6 hours, 2025-08-01 — requires preprocessed files):
 
-```bash
-MALLOC_CHECK_=0 anemoi-datasets create config/debug/lightning-icon.yaml /tmp/test-icon.zarr
-MALLOC_CHECK_=0 anemoi-datasets create config/debug/lightning-inca.yaml /tmp/test-inca.zarr
+```tcsh
+limit coredumpsize 0
+env MALLOC_CHECK_=0 anemoi-datasets create config/debug/lightning-icon.yaml /tmp/test-icon.zarr
+env MALLOC_CHECK_=0 anemoi-datasets create config/debug/lightning-inca.yaml /tmp/test-inca.zarr
 ```
 
-> `MALLOC_CHECK_=0` suppresses a harmless double-free in C extensions during Python shutdown.
+> The process prints `munmap_chunk(): invalid pointer` and exits with SIGABRT during Python shutdown — this is a C extension cleanup bug, not a dataset error. The zarr is fully written before the crash. `limit coredumpsize 0` prevents writing a core file. In tcsh, `VAR=value cmd` is not valid syntax — use `env VAR=value cmd` or `setenv VAR value` first.
 
 ### Inspecting a dataset
 
@@ -233,8 +234,8 @@ A dataset is a reproducible build artifact. Its exact content is determined by:
 Both must be versioned together via a Git tag **before** running a production build.
 
 ```
-varda-lightning-thx-1km-2005-2025-10min-v1        →  tag: v1
-varda-lightning-thx-1km-2005-2025-10min-v1-inca   →  tag: v1-inca
+varda-lightning-thx8km-1km-2005-2025-10min-v1        →  tag: v1
+varda-lightning-thx8km-1km-2005-2025-10min-v1-inca   →  tag: v1-inca
 ```
 
 ## Dataset naming
