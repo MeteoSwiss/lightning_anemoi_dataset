@@ -2,12 +2,12 @@
 # Build an anemoi lightning dataset using a config from config/.
 #
 # Usage:
-#   sbatch scripts/build.sh [icon|inca] [radius_km] [output_zarr_path]
+#   sbatch scripts/build.sh [icon|inca] [radius_km] [output_dir]
 #
 # Examples:
 #   sbatch scripts/build.sh icon 8
 #   sbatch scripts/build.sh inca 8
-#   sbatch scripts/build.sh icon 8 /tmp/test.zarr
+#   sbatch scripts/build.sh icon 8 /tmp
 #
 # The script looks for config/varda-lightning-thx{R}km-1km-*-10min-v1[-inca].yaml
 # and uses it directly. The output zarr name comes from the config's `name:` field.
@@ -55,8 +55,8 @@ fi
 source "${REPO_DIR}/.venv/bin/activate"
 
 DATASET_NAME="$(python3 -c "import yaml; print(yaml.safe_load(open('$DATASET_CONFIG'))['name'])")"
-OUTPUT_DIR="/store_new/mch/msclim/anemoi-datasets"
-OUTPUT="${3:-${OUTPUT_DIR}/${DATASET_NAME}.zarr}"
+OUTPUT_DIR="${3:-/store_new/mch/msclim/anemoi-datasets}"
+OUTPUT="${OUTPUT_DIR}/${DATASET_NAME}.zarr"
 
 echo "Grid    : $GRID"
 echo "Radius  : ${RADIUS} km"

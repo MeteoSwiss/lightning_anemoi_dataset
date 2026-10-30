@@ -166,13 +166,14 @@ sbatch scripts/preprocess.sh icon
 2. Build the anemoi dataset:
 
 ```bash
-sbatch scripts/build.sh icon 8    # ICON grid, 8 km radius
-sbatch scripts/build.sh inca 16   # INCA/RADAR grid, 16 km radius
+sbatch scripts/build.sh icon 8                              # ICON, 8 km → /store_new/mch/msclim/anemoi-datasets/
+sbatch scripts/build.sh inca 16                             # INCA, 16 km → /store_new/mch/msclim/anemoi-datasets/
+sbatch scripts/build.sh icon 8 /tmp                         # custom output directory
 ```
 
-`build.sh` reads `start`/`stop` dates and paths from the corresponding preprocess config and generates the dataset config on-the-fly. The output zarr name is derived from the grid, date range, and radius (e.g. `varda-lightning-thx16km-1km-2025-10min-v1-inca.zarr`).
+`build.sh` looks for a matching config in `config/` using the pattern `varda-lightning-thx{R}km-1km-*-10min-v1[-inca].yaml`. The output zarr name comes from the `name:` field in that config.
 
-The preprocessed NetCDF files contain all radii (e.g. `[4, 8, 16]` km) under a `radius` dimension, so building a dataset for a different radius requires no reprocessing — just pass a different `radius_km` to `build.sh`.
+The preprocessed NetCDF files contain all radii (`[4, 8, 16]` km) under a `radius` dimension, so building a dataset for a different radius requires no reprocessing — configs for all radii are in `config/`.
 
 Debug configs for a quick smoke test (6 hours, 2025-08-01 — requires preprocessed files):
 
@@ -250,7 +251,7 @@ purpose-content-source-resolution-start-end-frequency-version[-extra-str]
 |---|---|
 | purpose | `varda` |
 | content | `lightning` |
-| source | `thx` |
+| source | `thx8km` / `thx4km` / `thx16km` (radius encoded in source) |
 | resolution | `1km` |
 | start / end | `2005` / `2025` |
 | frequency | `10min` |
