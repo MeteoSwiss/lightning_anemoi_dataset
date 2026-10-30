@@ -17,4 +17,4 @@ input:
 
     - thx-lightning:
         data_dir: /store_new/mch/msclim/lightning_on_inca
-        radius_km: 4
+        radius_km: 8

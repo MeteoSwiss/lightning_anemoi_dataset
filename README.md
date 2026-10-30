@@ -82,7 +82,7 @@ Output directories are set in the YAML configs under `config/preprocess/`.
 | `grid_type` | `icon` | Target grid: `icon` (ICON-CH1 native) or `inca` (710×640 LV95 regular). |
 | `granularity` | `10min` | Accumulation window and timestep per output file. Options: `10min`, `60min`, `24h`. |
 | `discharge_type` | `[CG, IC]` | Lightning types to include. `CG` = cloud-to-ground (`intra=0`), `IC` = intra-cloud (`intra=1`). |
-| `radius_km` | `8.0` | Accumulation radius in km. Accepts a single value or a list of 1–3 values (e.g. `[4, 8, 16]`). All radii are stored together in one NetCDF file under a `radius` dimension — the KD-tree is queried once per time step and thresholded per radius. `0` = nearest-neighbour only. 8 km is used in Coalition4; INCA/RADAR typically uses 4 km; ICAO/WMO thunderstorm proximity threshold is 16 km. |
+| `radius_km` | `8.0` | Accumulation radius in km. Accepts a single value or a list of 1–3 values (e.g. `[4, 8, 16]`). All radii are stored together in one NetCDF file under a `radius` dimension — the KD-tree is queried once per time step and thresholded per radius. `0` = nearest-neighbour only. 8 km is used in Coalition4; INCA/RADAR typically uses 8 km; ICAO/WMO thunderstorm proximity threshold is 16 km. |
 | `network_bbox` | `[42.5, 50.2, 0.0, 17.0]` | THX network extent as `[lat_min, lat_max, lon_min, lon_max]`. Cells outside this box are masked. |
 | `archive_path` | `/store_new/mch/msclim/hamann/database/lightning/THX` | Root of the THX archive tree. Both `.prd` and `.prd.zip` files are supported. |
 | `icon_grid_file` | `/store_new/mch/msclim/pronos/icon_grid_0001_R19B08_mch.nc` | ICON-CH1 R19B08 native grid file (1,147,980 cells, ~0.7 km mean spacing). Only used when `grid_type: icon`. |
@@ -169,7 +169,7 @@ Dataset configs are under `config/`:
 | Config | Grid | Period | Frequency | Radius |
 |---|---|---|---|---|
 | `varda-lightning-thx-1km-2005-2025-10min-v1.yaml` | ICON | 2005–2025 | 10 min | 8 km |
-| `varda-lightning-thx-1km-2005-2025-10min-v1-inca.yaml` | INCA/RADAR | 2005–2025 | 10 min | 4 km |
+| `varda-lightning-thx-1km-2005-2025-10min-v1-inca.yaml` | INCA/RADAR | 2005–2025 | 10 min | 8 km |
 
 The preprocessed NetCDF files contain all radii (e.g. `[4, 8, 16]` km) under a `radius` dimension. The `radius_km` parameter in the recipe selects which one to use — so you can build separate datasets for different radii from the same preprocessed files without rerunning preprocessing.
 
