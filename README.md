@@ -168,7 +168,7 @@ sbatch scripts/preprocess.sh icon
 ```bash
 sbatch scripts/build.sh icon 8                                           # ICON, 8 km → /store_new/mch/msclim/anemoi-datasets/
 sbatch scripts/build.sh inca 16                                          # INCA, 16 km → /store_new/mch/msclim/anemoi-datasets/
-sbatch scripts/build.sh icon 8 /users/mbuzzi/lightning_anemoi_dataset   # write to repo dir for local testing
+sbatch scripts/build.sh icon 8 /store_new/mch/msclim/anemoi-datasets    # explicit output directory
 ```
 
 `build.sh` looks for a matching config in `config/` using the pattern `varda-lightning-thx{R}km-1km-*-10min-v1[-inca].yaml`. The output zarr name comes from the `name:` field in that config.
