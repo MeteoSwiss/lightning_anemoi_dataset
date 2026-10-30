@@ -1,14 +1,16 @@
 #!/bin/bash
-# Build an anemoi lightning dataset from the preprocessed NetCDF files.
-# Dates and paths are read from the corresponding preprocess config.
+# Build an anemoi lightning dataset using a config from config/.
 #
 # Usage:
 #   sbatch scripts/build.sh [icon|inca] [radius_km] [output_zarr_path]
 #
 # Examples:
 #   sbatch scripts/build.sh icon 8
-#   sbatch scripts/build.sh inca 16
-#   sbatch scripts/build.sh icon 4 /tmp/test.zarr
+#   sbatch scripts/build.sh inca 8
+#   sbatch scripts/build.sh icon 8 /tmp/test.zarr
+#
+# The script looks for config/varda-lightning-thx{R}km-1km-*-10min-v1[-inca].yaml
+# and uses it directly. The output zarr name comes from the config's `name:` field.
 #
 # Default: grid=icon  radius=8
 #
@@ -35,113 +37,36 @@ case "$GRID" in
   *) echo "Unknown grid '${GRID}'. Use 'icon' or 'inca'." >&2; exit 1 ;;
 esac
 
-PREPROCESS_CONFIG="${REPO_DIR}/config/preprocess/${GRID}.yaml"
-if [[ ! -f "$PREPROCESS_CONFIG" ]]; then
-  echo "Preprocess config not found: $PREPROCESS_CONFIG" >&2
+# Find the dataset config for this grid + radius.
+SUFFIX=""
+[[ "$GRID" == "inca" ]] && SUFFIX="-inca"
+PATTERN="${REPO_DIR}/config/varda-lightning-thx${RADIUS}km-1km-*-10min-v1${SUFFIX}.yaml"
+
+DATASET_CONFIG=""
+for f in ${REPO_DIR}/config/varda-lightning-thx${RADIUS}km-1km-*-10min-v1${SUFFIX}.yaml; do
+  [[ -f "$f" ]] && DATASET_CONFIG="$f" && break
+done
+if [[ -z "$DATASET_CONFIG" ]]; then
+  echo "No dataset config found matching: $PATTERN" >&2
+  echo "Create config/varda-lightning-thx${RADIUS}km-1km-<period>-10min-v1${SUFFIX}.yaml first." >&2
   exit 1
 fi
 
 source "${REPO_DIR}/.venv/bin/activate"
 
-# Generate a dataset config from the preprocess config + radius argument.
-DATASET_CONFIG="$(mktemp /tmp/anemoi-lightning-XXXXXX.yaml)"
-trap 'rm -f "$DATASET_CONFIG"' EXIT
-
-python3 - "$PREPROCESS_CONFIG" "$GRID" "$RADIUS" > "$DATASET_CONFIG" << 'PYEOF'
-import sys, yaml
-from datetime import datetime, timedelta
-
-preprocess_yaml, grid, radius_str = sys.argv[1], sys.argv[2], sys.argv[3]
-radius = float(radius_str)
-
-with open(preprocess_yaml) as f:
-    pre = yaml.safe_load(f)
-
-def parse_date(val):
-    s = str(val).replace("-", "")
-    return datetime.strptime(s, "%Y%m%d")
-
-start_dt = parse_date(pre["start"])
-# config.py adds +1 day to stop (end_of_day=True), so stop is the LAST day processed
-stop_dt  = parse_date(pre["stop"])
-end_dt   = stop_dt.replace(hour=23, minute=50)  # last 10-min step of the last day
-
-start_anemoi = start_dt.strftime("%Y-%m-%dT00:10")
-end_anemoi   = end_dt.strftime("%Y-%m-%dT%H:%M")
-
-start_year = start_dt.year
-end_year   = stop_dt.year
-period     = f"{start_year}-{end_year}" if start_year != end_year else str(start_year)
-
-source     = f"thx{int(radius)}km"
-suffix     = "-inca" if grid == "inca" else ""
-name       = f"varda-lightning-{source}-1km-{period}-10min-v1{suffix}"
-
-data_dir   = pre.get("output_dir", "/store_new/mch/msclim/lightning_gridded")
-icon_line  = ""
-if grid == "icon":
-    icon_grid = pre.get("icon_grid_file",
-                        "/store_new/mch/msclim/pronos/icon_grid_0001_R19B08_mch.nc")
-    icon_line = f"        icon_grid_path: {icon_grid}"
-
-print(f"""\
-name: {name}
-
-description: |
-  THX lightning strike counts on the {'ICON-CH1 native' if grid == 'icon' else 'INCA/RADAR LV95'} grid
-  at 10-minute temporal resolution, accumulation radius = {int(radius)} km.
-  Source: MeteoSwiss THX archive ({data_dir})
-
-licence: CC BY 4.0
-attribution: MeteoSwiss
-resolution: 1km
-
-dates:
-  start: {start_anemoi}
-  end:   {end_anemoi}
-  frequency: 10m
-
-build:
-  group_by: daily
-
-input:
-  join:
-
-    - thx-lightning:
-        data_dir: {data_dir}
-        grid_type: {grid}
-        radius_km: {radius}
-{icon_line}
-
-    - forcings:
-        template: ${{input.join.0.thx-lightning}}
-        param:
-          - cos_latitude
-          - cos_longitude
-          - sin_latitude
-          - sin_longitude
-          - cos_julian_day
-          - sin_julian_day
-          - cos_local_time
-          - sin_local_time
-          - insolation
-""")
-PYEOF
-
-# Derive output path from the dataset name in the generated config
 DATASET_NAME="$(python3 -c "import yaml; print(yaml.safe_load(open('$DATASET_CONFIG'))['name'])")"
 OUTPUT_DIR="/store_new/mch/msclim/anemoi-datasets"
 OUTPUT="${3:-${OUTPUT_DIR}/${DATASET_NAME}.zarr}"
 
 echo "Grid    : $GRID"
 echo "Radius  : ${RADIUS} km"
-echo "Config  : $PREPROCESS_CONFIG"
+echo "Config  : $DATASET_CONFIG"
 echo "Dates   : $(python3 -c "import yaml; c=yaml.safe_load(open('$DATASET_CONFIG')); print(c['dates']['start'], '→', c['dates']['end'])")"
 echo "Output  : $OUTPUT"
 echo "Started : $(date -u)"
 echo ""
 
-ulimit -c 0  # suppress core dump file — crash is in C extension cleanup after zarr is written
+ulimit -c 0  # suppress core dump — crash is in C extension cleanup after zarr is written
 MALLOC_CHECK_=0 anemoi-datasets create "$DATASET_CONFIG" "$OUTPUT"
 status=$?
 if [[ $status -ne 0 && $status -ne 134 ]]; then  # 134 = SIGABRT from harmless shutdown crash

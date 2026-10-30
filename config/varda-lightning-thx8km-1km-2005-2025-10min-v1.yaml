@@ -20,7 +20,7 @@ attribution: MeteoSwiss
 resolution: 1km
 
 dates:
-  start: 2005-01-01T00:10
+  start: 2025-01-01T00:10
   end: 2025-12-31T23:50
   frequency: 10m
 
