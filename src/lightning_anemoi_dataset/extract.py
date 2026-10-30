@@ -12,7 +12,8 @@ import pandas as pd
 # Pipe-separated columns in the THX .prd format
 _COLUMNS = ["datetime", "lon", "lat", "current", "nS", "mode", "intra",
             "Ax", "Ki2", "Exc", "Incl", "Arc", "d1", "d2", "d3", "d4", "d5"]
-_DATETIME_FMT = "%d.%m.%Y %H:%M:%S.%f UTC"
+# Some rows omit the trailing " UTC" and use variable-width fractional seconds;
+# use format='mixed' with dayfirst=True to handle all variants robustly.
 
 
 def read_thx_day(
@@ -37,10 +38,11 @@ def read_thx_day(
     DataFrame with columns [lon, lat, current, intra] indexed by UTC datetime.
     Returns an empty DataFrame when the file is missing.
     """
-    date_str = day.strftime("%Y%m%d")
-    base = Path(archive_path) / day.strftime("%Y/%m")
-    prd = base / f"{date_str}.prd"
-    prd_zip = base / f"{date_str}.prd.zip"
+    # Filename format: THX{YY}{JJJ}0000.prd[.zip]  (flat directory, no subdirs)
+    stem = f"THX{day.strftime('%y%j')}0000"
+    base = Path(archive_path)
+    prd = base / f"{stem}.prd"
+    prd_zip = base / f"{stem}.prd.zip"
 
     raw: str | None = None
     if prd.exists():
@@ -61,7 +63,12 @@ def read_thx_day(
         parse_dates=False,
     )
 
-    df["datetime"] = pd.to_datetime(df["datetime"].str.strip(), format=_DATETIME_FMT, utc=True)
+    df["datetime"] = pd.to_datetime(
+        df["datetime"].str.strip().str.replace(r"\s*UTC$", "", regex=True),
+        format="mixed",
+        dayfirst=True,
+        utc=True,
+    )
     df = df.set_index("datetime")
     df["lon"] = pd.to_numeric(df["lon"], errors="coerce")
     df["lat"] = pd.to_numeric(df["lat"], errors="coerce")

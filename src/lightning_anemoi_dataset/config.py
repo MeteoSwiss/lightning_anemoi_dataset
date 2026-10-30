@@ -29,6 +29,9 @@ class Config:
     archive_path: str = DEFAULT_ARCHIVE
     icon_grid_file: str = DEFAULT_ICON_GRID
     output_dir: Path = field(default_factory=lambda: Path("."))
+    # When False, lat/lon are stored once in inca_grid.nc instead of every daily file.
+    # Reduces INCA daily file size from ~4.3 MB to ~0.3 MB.
+    embed_latlon: bool = True
 
     def __post_init__(self):
         if not 1 <= len(self.radius_km) <= 3:
@@ -49,6 +52,7 @@ class Config:
             archive_path=d.get("archive_path", DEFAULT_ARCHIVE),
             icon_grid_file=d.get("icon_grid_file", DEFAULT_ICON_GRID),
             output_dir=Path(d.get("output_dir", ".")),
+            embed_latlon=d.get("embed_latlon", True),
         )
 
     @property

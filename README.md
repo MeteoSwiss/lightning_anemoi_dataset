@@ -28,8 +28,10 @@ The workspace installs three packages into `.venv`:
 Raw lightning data comes from the [Vaisala THX](https://www.vaisala.com/en/products/systems/lightning-detection) network, archived at MeteoSwiss under:
 
 ```
-/store_new/mch/msclim/hamann/database/lightning/THX/YYYY/MM/YYYYMMDD.prd[.zip]
+/store_new/mch/msclim/hamann/database/lightning/THX/THX{YY}{JJJ}0000.prd[.zip]
 ```
+
+Files are in a flat directory (no subdirectories). The filename encodes a 2-digit year and 3-digit day-of-year, e.g. `THX25213` = 2025 day 213 = 2025-08-01.
 
 **Format:** pipe-separated (`|`), one strike per row:
 
@@ -101,20 +103,23 @@ In both cases the KD-tree is **queried once per time step** using the largest ra
 **ICON** (`grid_type: icon`):
 ```
 lightning_icon_YYYYMMDD.nc
-  dims:   time=144, radius=N, ncells=1_147_980
-  vars:   lightning_count(time, radius, ncells)  [int16, fill=-1]
-  coords: clat(ncells), clon(ncells), time(UTC), radius(km)
+  dims:    time=144 (unlimited), radius=N, ncells=1_147_980
+  vars:    lightning_count(time, radius, ncells)  [float32, fill=NaN]
+  coords:  clat(ncells), clon(ncells), time(UTC), radius(km), time_bnds(time, bnds)
 ```
 
 **INCA/RADAR** (`grid_type: inca`):
 ```
 lightning_inca_YYYYMMDD.nc
-  dims:   time=144, radius=N, p_i=640, p_j=710
-  vars:   lightning_count(time, radius, p_i, p_j)  [int16]
-  coords: lat(p_i, p_j), lon(p_i, p_j), time(UTC), radius(km)
+  dims:    time=144 (unlimited), radius=N, y=640, x=710
+  vars:    lightning_count(time, radius, y, x)  [float32, fill=NaN]
+  coords:  x(m, LV95), y(m, LV95), lat(y,x), lon(y,x), time(UTC), radius(km), time_bnds(time, bnds)
+  mapping: swiss_lv95_coordinates (oblique Mercator, EPSG:2056)
 ```
 
 Both are written to the same directory (`/store_new/mch/msclim/lightning_gridded`).
+
+Output follows the MeteoSwiss data model standard: CF-1.8, `float32` encoding, `NaN` fill values, `cell_method: "time: sum (bnds: end, interval: 10min)"`, MeteoSwiss global attributes (`institution`, `history`, `references`).
 
 Select a specific radius with xarray: `ds.sel(radius=8.0)`.
 
