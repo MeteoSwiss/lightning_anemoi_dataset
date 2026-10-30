@@ -30,6 +30,7 @@ lightning-grid = "lightning_anemoi_dataset.cli:main"
 [dependency-groups]
 dev = [
     "matplotlib>=3.11.2",
+    "pytest>=9.2.0",
 ]
 
 [tool.uv.workspace]
