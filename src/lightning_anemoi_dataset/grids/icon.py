@@ -39,12 +39,28 @@ class IconGrid:
         ])
         self._tree = cKDTree(xyz)
 
+        # Tessellation radius: half the max nearest-neighbour chord distance among
+        # a strided sample of cell centres. Strikes farther than this from their
+        # nearest cell are outside the domain's Voronoi tessellation and are dropped
+        # in bin() to prevent boundary cells from accumulating unshared counts.
+        stride = max(1, self.ncells // 100_000)
+        sample = xyz[::stride]
+        nn_dists, _ = self._tree.query(sample, k=2, workers=-1)
+        # nn_dists[:, 0] == 0 (each sample point is in the tree); [:, 1] = true NN
+        self._domain_chord = float(np.max(nn_dists[:, 1])) / 2
+
     def bin(self, strikes: pd.DataFrame, radii_km: list[float]) -> np.ndarray:
         """Count strikes per cell for each radius.
 
-        The KD-tree is queried once (using the maximum radius) and results are
-        thresholded per radius — one pass over the data regardless of how many
-        radii are requested.
+        Each strike increments all cells within the given radius (neighbourhood
+        count). ``query_ball_point`` is called once per radius.
+
+        Only strikes that fall within the grid tessellation are counted. A strike
+        is inside when its nearest cell centre is within ``_domain_chord`` (half
+        the maximum inter-cell nearest-neighbour distance, estimated at construction
+        time). Strikes farther outside the domain are dropped; without this filter,
+        boundary cells accumulate unshared contributions from outside-domain strikes
+        and show inflated counts.
 
         Parameters
         ----------
@@ -72,19 +88,23 @@ class IconGrid:
             np.sin(lat_r),
         ])
 
-        max_radius = max(radii_km)
-        if max_radius > 0:
-            chord_max = _km_to_chord(max_radius)
-            dists, indices = self._tree.query(xyz, k=1, workers=-1, distance_upper_bound=chord_max)
-            valid = dists < np.inf   # points within max radius
-        else:
-            dists, indices = self._tree.query(xyz, k=1, workers=-1)
-            valid = np.ones(len(dists), dtype=bool)
+        # Drop strikes outside the grid tessellation.
+        nn_dist, _ = self._tree.query(xyz, k=1, workers=-1)
+        in_domain = nn_dist <= self._domain_chord
+        if not np.any(in_domain):
+            return counts
+        xyz = xyz[in_domain]
 
-        chord_thresholds = [_km_to_chord(r) if r > 0 else np.inf for r in radii_km]
-
-        for i, chord in enumerate(chord_thresholds):
-            mask = valid & (dists <= chord)
-            np.add.at(counts[i], indices[mask], 1)
+        for i, r_km in enumerate(radii_km):
+            if r_km == 0:
+                # nearest-neighbour only: one cell per strike
+                _, nearest = self._tree.query(xyz, k=1, workers=-1)
+                np.add.at(counts[i], nearest, 1)
+            else:
+                # neighbourhood count: all cells within r km get +1 per strike
+                chord = _km_to_chord(r_km)
+                for cell_list in self._tree.query_ball_point(xyz, r=chord, workers=-1):
+                    if cell_list:
+                        np.add.at(counts[i], cell_list, 1)
 
         return counts

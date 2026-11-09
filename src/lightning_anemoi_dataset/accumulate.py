@@ -9,10 +9,14 @@ import pandas as pd
 
 
 def time_bins(day: datetime, granularity: timedelta) -> list[datetime]:
-    """Return UTC bin-start timestamps for one calendar day."""
+    """Return UTC bin-END timestamps for one calendar day.
+
+    Each timestamp T labels the accumulation window (T - granularity, T].
+    The last bin ends at midnight of the following day (00:00 day+1).
+    """
     midnight = day.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
     n = int(timedelta(days=1) / granularity)
-    return [midnight + i * granularity for i in range(n)]
+    return [midnight + (i + 1) * granularity for i in range(n)]
 
 
 def accumulate_icon(
@@ -46,8 +50,8 @@ def accumulate_icon(
     result = np.zeros((len(bins), n_radii, grid.ncells), dtype=np.int16)
 
     for i, t in enumerate(bins):
-        t_end = t + granularity
-        window = strikes[(strikes.index >= t) & (strikes.index < t_end)]
+        t_start = t - granularity
+        window = strikes[(strikes.index >= t_start) & (strikes.index < t)]
         result[i] = grid.bin(window, radii_km)
 
     return result
@@ -72,8 +76,8 @@ def accumulate_inca(
     result = np.zeros((len(bins), n_radii, ny, nx), dtype=np.int16)
 
     for i, t in enumerate(bins):
-        t_end = t + granularity
-        window = strikes[(strikes.index >= t) & (strikes.index < t_end)]
+        t_start = t - granularity
+        window = strikes[(strikes.index >= t_start) & (strikes.index < t)]
         result[i] = grid.bin(window, radii_km)
 
     return result

@@ -65,10 +65,10 @@ def _time_arrays(bins: list[datetime], granularity: timedelta, day: datetime):
     t_vals = np.array(
         [(t - epoch).total_seconds() for t in bins], dtype="float32"
     )
-    # time_bnds: [start, end] of each accumulation interval
+    # time_bnds: [start, end] of each accumulation interval (label = end)
     t_bnds = np.column_stack([
+        t_vals - granularity.total_seconds(),
         t_vals,
-        t_vals + granularity.total_seconds(),
     ]).astype("float32")
 
     return t_vals, t_bnds, units

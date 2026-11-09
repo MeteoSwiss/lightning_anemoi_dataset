@@ -52,8 +52,15 @@ class IncaGrid:
     def bin(self, strikes: pd.DataFrame, radii_km: list[float]) -> np.ndarray:
         """Count strikes per grid cell for each radius.
 
-        The KD-tree is queried once (using the maximum radius) and results are
-        thresholded per radius.
+        Each strike increments all cells within the given radius (neighbourhood
+        count). ``query_ball_point`` is called once per radius.
+
+        Only strikes that fall within the grid tessellation are counted. A strike
+        is inside the tessellation when its LV95 coordinates lie within half a cell
+        width of the nearest cell centre in both axes — the natural Voronoi boundary
+        of the regular 1 km grid (half-diagonal ≈ 0.71 km). Strikes farther outside
+        the domain are dropped; without this filter, boundary cells accumulate
+        unshared contributions from outside-domain strikes and show inflated counts.
 
         Parameters
         ----------
@@ -73,23 +80,27 @@ class IncaGrid:
             return counts.reshape(n_radii, _NY, _NX)
 
         sx, sy = _WGS84_TO_LV95.transform(strikes["lon"].values, strikes["lat"].values)
-        xy = np.column_stack([sx, sy])
 
-        max_radius = max(radii_km)
-        max_radius_m = max_radius * 1_000.0
+        # Drop strikes outside the grid tessellation (Voronoi cells of the regular grid).
+        # The tessellation boundary extends half a cell beyond the outermost cell centres.
+        in_domain = (
+            (sx >= _X0 - _DX / 2) & (sx <= _X0 + (_NX - 0.5) * _DX) &
+            (sy >= _Y0 - _DY / 2) & (sy <= _Y0 + (_NY - 0.5) * _DY)
+        )
+        if not np.any(in_domain):
+            return counts.reshape(n_radii, _NY, _NX)
+        xy = np.column_stack([sx[in_domain], sy[in_domain]])
 
-        if max_radius > 0:
-            dists, indices = self._tree.query(xy, k=1, workers=-1,
-                                              distance_upper_bound=max_radius_m)
-            valid = dists < np.inf
-        else:
-            dists, indices = self._tree.query(xy, k=1, workers=-1)
-            valid = np.ones(len(dists), dtype=bool)
-
-        thresholds_m = [r * 1_000.0 if r > 0 else np.inf for r in radii_km]
-
-        for i, thresh in enumerate(thresholds_m):
-            mask = valid & (dists <= thresh)
-            np.add.at(counts[i], indices[mask], 1)
+        for i, r_km in enumerate(radii_km):
+            if r_km == 0:
+                # nearest-neighbour only: one cell per strike
+                _, nearest = self._tree.query(xy, k=1, workers=-1)
+                np.add.at(counts[i], nearest, 1)
+            else:
+                # neighbourhood count: all cells within r km get +1 per strike
+                r_m = r_km * 1_000.0
+                for cell_list in self._tree.query_ball_point(xy, r=r_m, workers=-1):
+                    if cell_list:
+                        np.add.at(counts[i], cell_list, 1)
 
         return counts.reshape(n_radii, _NY, _NX)

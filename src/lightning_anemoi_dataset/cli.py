@@ -57,7 +57,30 @@ def main(argv: list[str] | None = None) -> None:
         _run_inca(cfg)
 
 
+def _bbox_mask(lat: "np.ndarray", lon: "np.ndarray", bbox: list[float]) -> "np.ndarray":
+    """Return a boolean array True where (lat, lon) falls inside the network bbox.
+
+    Parameters
+    ----------
+    lat, lon:
+        Arrays of cell-centre coordinates in WGS84 degrees (any shape).
+    bbox:
+        ``[lat_min, lat_max, lon_min, lon_max]`` — the THX network extent.
+
+    Returns
+    -------
+    Boolean array of the same shape as ``lat``.
+    """
+    import numpy as np
+    lat_min, lat_max, lon_min, lon_max = bbox
+    return (
+        (lat >= lat_min) & (lat <= lat_max) &
+        (lon >= lon_min) & (lon <= lon_max)
+    )
+
+
 def _run_icon(cfg) -> None:
+    import numpy as np
     from .accumulate import accumulate_icon
     from .extract import read_thx_day
     from .grids.icon import IconGrid
@@ -65,6 +88,10 @@ def _run_icon(cfg) -> None:
 
     log.info("Loading ICON grid: %s", cfg.icon_grid_file)
     grid = IconGrid(cfg.icon_grid_file)
+
+    in_network = _bbox_mask(grid.clat, grid.clon, cfg.network_bbox)
+    log.info("Network mask: %d / %d cells inside bbox %s",
+             int(in_network.sum()), grid.ncells, cfg.network_bbox)
 
     if not cfg.embed_latlon:
         grid_file = Path(cfg.output_dir) / "icon_grid.nc"
@@ -84,14 +111,19 @@ def _run_icon(cfg) -> None:
 
         strikes = read_thx_day(day, cfg.archive_path, cfg.discharge_type)
         counts = accumulate_icon(strikes, day, cfg.granularity, grid, cfg.radius_km)
+        # Cells outside the THX network bbox cannot be trusted (no detection ≠ no strikes).
+        counts_f = counts.astype(np.float32)
+        counts_f[:, :, ~in_network] = np.nan
         log.info("Processing %s  strikes=%d  count[min=%d max=%d]",
-                 day.date(), len(strikes), int(counts.min()), int(counts.max()))
-        write_icon_day(counts, day, cfg.granularity, grid.clat, grid.clon,
+                 day.date(), len(strikes),
+                 int(np.nanmin(counts_f)), int(np.nanmax(counts_f)))
+        write_icon_day(counts_f, day, cfg.granularity, grid.clat, grid.clon,
                        cfg.radius_km, Path(cfg.output_dir), embed_latlon=cfg.embed_latlon)
         day += timedelta(days=1)
 
 
 def _run_inca(cfg) -> None:
+    import numpy as np
     from .accumulate import accumulate_inca
     from .extract import read_thx_day
     from .grids.inca import IncaGrid
@@ -99,6 +131,10 @@ def _run_inca(cfg) -> None:
 
     log.info("Building INCA/RADAR grid (EPSG:2056)")
     grid = IncaGrid()
+
+    in_network = _bbox_mask(grid.lat, grid.lon, cfg.network_bbox)
+    log.info("Network mask: %d / %d cells inside bbox %s",
+             int(in_network.sum()), grid.NX * grid.NY, cfg.network_bbox)
 
     if not cfg.embed_latlon:
         grid_file = Path(cfg.output_dir) / "inca_grid.nc"
@@ -118,9 +154,13 @@ def _run_inca(cfg) -> None:
 
         strikes = read_thx_day(day, cfg.archive_path, cfg.discharge_type)
         counts = accumulate_inca(strikes, day, cfg.granularity, grid, cfg.radius_km)
+        # Cells outside the THX network bbox cannot be trusted (no detection ≠ no strikes).
+        counts_f = counts.astype(np.float32)
+        counts_f[:, :, ~in_network] = np.nan
         log.info("Processing %s  strikes=%d  count[min=%d max=%d]",
-                 day.date(), len(strikes), int(counts.min()), int(counts.max()))
-        write_inca_day(counts, day, cfg.granularity, grid.lat, grid.lon,
+                 day.date(), len(strikes),
+                 int(np.nanmin(counts_f)), int(np.nanmax(counts_f)))
+        write_inca_day(counts_f, day, cfg.granularity, grid.lat, grid.lon,
                        cfg.radius_km, Path(cfg.output_dir), embed_latlon=cfg.embed_latlon)
         day += timedelta(days=1)
 

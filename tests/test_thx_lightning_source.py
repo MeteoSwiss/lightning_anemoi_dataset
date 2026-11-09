@@ -186,3 +186,21 @@ class TestThxLightningExecute:
                 src.execute(times)
 
         assert len(open_calls) == 1
+
+    def test_midnight_reads_previous_day(self, tmp_path, dummy_icon_grid):
+        """00:00 timestamps (label = end of [23:50, 00:00)) live in the previous day's file."""
+        midnight = datetime(2020, 1, 2, 0, 0)  # label for [23:50 Jan1, 00:00 Jan2)
+        ds = _make_dataset([midnight])
+
+        # Must be stored in Jan 1's file, not Jan 2's
+        nc_path = tmp_path / "lightning_icon_20200101.nc"
+        ds.to_netcdf(nc_path)
+
+        src = _make_source(tmp_path, dummy_icon_grid)
+        with patch(
+            "anemoi_plugins_meteoswiss.transform.sources.thx_lightning.new_field_from_grid",
+            side_effect=lambda f, g: f,
+        ):
+            result = src.execute([midnight])
+
+        assert len(result) == 1
