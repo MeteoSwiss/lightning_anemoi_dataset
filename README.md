@@ -96,7 +96,14 @@ Output directories are set in the YAML configs under `config/preprocess/`.
 
 **INCA/RADAR** — Euclidean distance in projected metres. Strike coordinates are converted from WGS84 to LV95 (EPSG:2056) via pyproj; the KD-tree operates directly in metre space. Accurate because LV95 has very low metric distortion over the Alpine domain.
 
-In both cases the KD-tree is **queried once per time step** using the largest radius, then results are thresholded for each smaller radius — so adding extra radii has negligible cost.
+One `query_ball_point` call is made per radius per time step. Each strike increments **all cells within the radius** (neighbourhood count), not just the nearest cell.
+
+#### Domain tessellation filter
+
+Strikes that fall outside the grid's Voronoi tessellation are dropped before binning. Without this, boundary cells accumulate contributions from outside-domain strikes that are shared among fewer cells, inflating their counts relative to interior cells (most visible at 16 km radius).
+
+- **INCA**: exact bounding box — strikes must lie within ±½ cell of the outermost cell centres in LV95 metres (half-diagonal ≈ 0.71 km for the 1 km grid).
+- **ICON**: nearest-cell chord distance filter — the tessellation radius is estimated at construction time as half the maximum nearest-neighbour distance among a strided sample of cell centres.
 
 #### Output format
 
